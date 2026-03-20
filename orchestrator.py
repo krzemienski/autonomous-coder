@@ -6,14 +6,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from claude_code_sdk import ClaudeCodeOptions, query
-from claude_code_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
-
-# PermissionResult types live in claude_code_sdk; fall back to types sub-module
-try:
-    from claude_code_sdk import PermissionResultAllow, PermissionResultDeny
-except ImportError:
-    from claude_code_sdk.types import PermissionResultAllow, PermissionResultDeny  # type: ignore[no-redef]
+from claude_agent_sdk import ClaudeAgentOptions, PermissionResultAllow, PermissionResultDeny, query
+from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
 
 from .agent_factory import AgentFactory
 from .agent_instance import AgentInstance, AgentStatus

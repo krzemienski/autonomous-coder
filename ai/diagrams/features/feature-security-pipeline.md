@@ -5,7 +5,7 @@
 **Related Files:**
 - `security.py` — `is_command_allowed()`, `ALLOWED_COMMANDS`, `DANGEROUS_PATTERNS`
 - `orchestrator.py` — `security_callback()` using `can_use_tool`
-- `agent_factory.py` — Wires `can_use_tool` into `ClaudeCodeOptions`
+- `agent_factory.py` — Wires `can_use_tool` into `ClaudeAgentOptions`
 
 ## Purpose
 

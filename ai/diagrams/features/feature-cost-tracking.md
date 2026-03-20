@@ -57,7 +57,7 @@ flowchart TB
 
 ## Key Insights
 
-- **No SDK budget field**: `max_budget_usd` does NOT exist in claude-code-sdk v0.0.25 — budget is application-level logic
+- **No SDK budget field**: `max_budget_usd` does NOT exist in claude-agent-sdk v0.1.49 — budget is application-level logic
 - **Per-role limits**: Code phase gets $2.00 (40% of total), research gets $0.50 (10%)
 - **Graceful stopping**: Exceeding budget breaks the `async for` loop — the agent's last response is still captured
 - **Persistent tracking**: Every cost event is recorded in SQLite for post-session analysis

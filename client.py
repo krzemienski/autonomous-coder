@@ -1,5 +1,5 @@
 """
-Claude Code SDK client with security configuration and MCP setup.
+Claude Agent SDK client with security configuration and MCP setup.
 
 Provides a configured client for running autonomous coding sessions
 with defense-in-depth security.
@@ -9,11 +9,12 @@ import asyncio
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-from claude_code_sdk import ClaudeCodeOptions, query
-from claude_code_sdk.types import (
+from claude_agent_sdk import ClaudeAgentOptions, query
+from claude_agent_sdk.types import (
     AssistantMessage,
     ContentBlock,
     ResultMessage,
+    SandboxSettings,
     TextBlock,
     ToolResultBlock,
     ToolUseBlock,
@@ -30,7 +31,7 @@ class AutonomousCoderClient:
     """
     Client for running autonomous coding sessions with Claude.
 
-    Configures Claude Code SDK with:
+    Configures Claude Agent SDK with:
     - Security permissions scoped to project directory
     - Bash command validation via PreToolUse hooks
     - MCP server configuration for four-phase workflow:
@@ -115,30 +116,25 @@ class AutonomousCoderClient:
             },
         }
 
-    def get_options(self, system_prompt: str | None = None) -> ClaudeCodeOptions:
+    def get_options(self, system_prompt: str | None = None) -> ClaudeAgentOptions:
         """
-        Get Claude Code SDK options with security configuration.
+        Get Claude Agent SDK options with security configuration.
 
         Args:
             system_prompt: Optional system prompt override
 
         Returns:
-            Configured ClaudeCodeOptions
+            Configured ClaudeAgentOptions
         """
         permissions = get_security_permissions(str(self.project_path))
-        sandbox = get_sandbox_settings() if self.sandbox_enabled else {}
+        sandbox = get_sandbox_settings() if self.sandbox_enabled else None
 
-        options = ClaudeCodeOptions(
+        options = ClaudeAgentOptions(
             model=self.model,
-            max_tokens=self.max_tokens,
             cwd=str(self.project_path),
-            permissions=permissions,
             mcp_servers=self.get_mcp_servers(),
+            sandbox=SandboxSettings(**sandbox) if sandbox else None,
         )
-
-        # Add sandbox settings if enabled
-        if self.sandbox_enabled and sandbox:
-            options.sandbox = sandbox
 
         # Add system prompt if provided
         if system_prompt:
@@ -176,7 +172,6 @@ class AutonomousCoderClient:
                             if validation is not None:
                                 # Command blocked - yield error block
                                 yield TextBlock(
-                                    type="text",
                                     text=f"Security: {validation.get('error', 'Command blocked')}",
                                 )
                                 continue
@@ -184,9 +179,8 @@ class AutonomousCoderClient:
                     yield block
 
             elif isinstance(message, ResultMessage):
-                # Final result - yield any remaining content
-                for block in message.content:
-                    yield block
+                # Final result — no content blocks on ResultMessage in Agent SDK
+                pass
 
     async def run_session_to_completion(
         self,

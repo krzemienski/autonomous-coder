@@ -5,7 +5,7 @@
 **Related Files:**
 - `app.py` — Textual App entry point
 - `orchestrator.py` — Phase pipeline engine
-- `agent_factory.py` — ClaudeCodeOptions builder
+- `agent_factory.py` — ClaudeAgentOptions builder
 - `memory.py` — SQLite + FTS5 persistence
 - `security.py` — Command allowlist + can_use_tool callback
 
@@ -37,10 +37,10 @@ graph TB
         subgraph "Orchestration Layer"
             ORCH[AgentOrchestrator<br/>⏱️ Keeps phases sequential to avoid conflicts]
             PR[PhaseRunners<br/>🔄 R→E→P→C pipeline with budget gates]
-            AF[AgentFactory<br/>⚙️ Per-role ClaudeCodeOptions]
+            AF[AgentFactory<br/>⚙️ Per-role ClaudeAgentOptions]
         end
 
-        subgraph "SDK Layer — claude-code-sdk v0.0.25"
+        subgraph "SDK Layer — claude-agent-sdk v0.1.49"
             Q["query() calls<br/>⚡ One per agent, not nested"]
             CUT["can_use_tool callback<br/>🛡️ Blocks dangerous commands BEFORE execution"]
             HOOKS["PreToolUse hooks<br/>📊 Observability without blocking"]

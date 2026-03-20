@@ -206,7 +206,7 @@ def get_security_permissions(project_path: str) -> dict[str, Any]:
         project_path: Path to the project directory
 
     Returns:
-        Permissions dictionary for ClaudeCodeOptions
+        Permissions dictionary for ClaudeAgentOptions
     """
     return {
         "defaultMode": "acceptEdits",

@@ -538,14 +538,14 @@ config = {
 ## Dependencies
 
 - Python 3.11+
-- `claude-code-sdk` >= 0.1.0
+- `claude-agent-sdk` >= 0.1.0
 - `serena` (via uvx or pip)
 - Node.js 18+ (for npx commands)
 - Git (for version control)
 
 ## Helpful Resources
 
-- **Claude Code SDK**: https://github.com/anthropics/claude-code-sdk
+- **Claude Agent SDK**: https://github.com/anthropics/claude-agent-sdk-python
 - **Anthropic Quickstarts**: https://github.com/anthropics/anthropic-quickstarts
 - **Serena MCP**: https://github.com/serea-ai/serena
 - **Puppeteer MCP**: https://github.com/anthropics/puppeteer-mcp

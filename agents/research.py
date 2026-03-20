@@ -2,8 +2,8 @@
 import time
 from typing import Any
 
-from claude_code_sdk import query
-from claude_code_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
+from claude_agent_sdk import query
+from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
 
 from ..agent_factory import AgentFactory
 from ..orchestrator import PhaseContext, PhaseResult, security_callback

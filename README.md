@@ -1,6 +1,6 @@
 # Autonomous Coder
 
-A TUI-based multi-agent orchestration system for autonomous coding, built on the Claude Code SDK (Python).
+A TUI-based multi-agent orchestration system for autonomous coding, built on the Claude Agent SDK (Python).
 
 ## What It Does
 
@@ -37,7 +37,7 @@ Each agent runs as a separate `query()` call with its own model, tools, budget l
 
 ```bash
 # Install dependencies
-pip install claude-code-sdk textual
+pip install claude-agent-sdk textual
 
 # Run with a task
 python -m autonomous_coder "Add user authentication with JWT tokens"
@@ -67,8 +67,8 @@ python -m autonomous_coder
 │                    ORCHESTRATION LAYER                            │
 │  AgentOrchestrator │ PhaseRunners (R→E→P→C) │ AgentFactory       │
 ├──────────────────────────────────────────────────────────────────┤
-│                    SDK LAYER (claude-code-sdk v0.0.25)            │
-│  query() │ ClaudeCodeOptions │ can_use_tool │ ResultMessage       │
+│                    SDK LAYER (claude-agent-sdk v0.1.49)             │
+│  query() │ ClaudeAgentOptions │ can_use_tool │ ResultMessage        │
 ├──────────────────────────────────────────────────────────────────┤
 │                    PERSISTENCE LAYER                             │
 │  SQLite + FTS5 + WAL │ Session Management │ Cost Aggregation     │
@@ -77,7 +77,7 @@ python -m autonomous_coder
 
 ### Key Design Decisions
 
-- **`ClaudeCodeOptions` only** — Uses only verified fields from `claude-code-sdk v0.0.25`. No fabricated API.
+- **`ClaudeAgentOptions` only** — Uses only verified fields from `claude-agent-sdk v0.1.49`. No fabricated API.
 - **`can_use_tool` for security** — Pre-execution Bash command validation via `PermissionResultAllow`/`PermissionResultDeny`. Blocks dangerous commands *before* they run.
 - **Manual budget tracking** — `ResultMessage.total_cost_usd` accumulated per-agent with configurable limits. No phantom `max_budget_usd` field.
 - **Textual Messages for UI** — Built-in `post_message()` system, no custom EventBus. 8 message types: `AgentStarted`, `AgentOutput`, `AgentCompleted`, `AgentError`, `CostUpdate`, `SecurityBlock`, `PhaseStarted`, `PhaseCompleted`.
@@ -87,7 +87,7 @@ python -m autonomous_coder
 ## Requirements
 
 - Python 3.12+
-- [claude-code-sdk](https://pypi.org/project/claude-code-sdk/) v0.0.25+
+- [claude-agent-sdk](https://pypi.org/project/claude-agent-sdk/) v0.1.49+
 - [Textual](https://pypi.org/project/textual/) v7.0.0+
 - Claude Code CLI installed and authenticated
 
@@ -128,7 +128,7 @@ Defense-in-depth with three layers:
 autonomous-coder/
 ├── app.py                    # Textual App entry point
 ├── orchestrator.py           # Phase pipeline engine + PhaseRunner protocol
-├── agent_factory.py          # ClaudeCodeOptions builder per role
+├── agent_factory.py          # ClaudeAgentOptions builder per role
 ├── agent_instance.py         # Agent lifecycle + budget tracking
 ├── messages.py               # Textual Message subclasses (8 types)
 ├── config.py                 # Role configs, MCP servers, budget limits

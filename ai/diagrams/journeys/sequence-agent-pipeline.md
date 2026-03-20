@@ -33,7 +33,7 @@ sequenceDiagram
         Note over Orch,R: Phase 1: Research (budget: $0.50)
         Orch->>App: PhaseStarted("research")
         Note over App: 📊 Progress: Research ▶
-        Orch->>R: query(prompt, ClaudeCodeOptions)
+        Orch->>R: query(prompt, ClaudeAgentOptions)
         R-->>App: AgentOutput(text, tool calls)
         Note over App: 📝 Streaming output in Research tab
         R-->>Orch: ResultMessage(cost=$0.12)
