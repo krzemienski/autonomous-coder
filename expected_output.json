@@ -1,0 +1,218 @@
+{
+  "success_response": {
+    "description": "Expected output when task completes successfully",
+    "output": {
+      "success": true,
+      "task": "Add a dark mode toggle to the settings page",
+      "project_path": "/path/to/web-app",
+      "phases_completed": ["explore", "plan", "code"],
+      "total_tasks": 3,
+      "completed_tasks": 3,
+      "failed_tasks": 0,
+      "files_modified": [
+        {
+          "path": "apps/web/src/stores/theme.ts",
+          "action": "created",
+          "summary": "Created Zustand theme store with localStorage persistence"
+        },
+        {
+          "path": "apps/web/src/styles/theme.css",
+          "action": "created",
+          "summary": "Added CSS variables for light and dark themes"
+        },
+        {
+          "path": "apps/web/src/pages/settings.tsx",
+          "action": "modified",
+          "summary": "Added dark mode toggle using Toggle component"
+        },
+        {
+          "path": "apps/web/src/pages/_app.tsx",
+          "action": "modified",
+          "summary": "Added theme provider and CSS import"
+        }
+      ],
+      "tests_added": [
+        {
+          "path": "apps/web/src/stores/__tests__/theme.test.ts",
+          "tests": [
+            "should initialize with system preference",
+            "should toggle between light and dark",
+            "should persist theme across reloads"
+          ]
+        },
+        {
+          "path": "apps/web/src/pages/__tests__/settings.test.tsx",
+          "tests": [
+            "should render dark mode toggle",
+            "should update theme when toggle clicked"
+          ]
+        }
+      ],
+      "duration_seconds": 245,
+      "exploration_summary": {
+        "files_analyzed": 23,
+        "symbols_discovered": 156,
+        "patterns_identified": 8
+      },
+      "plan_summary": {
+        "total_tasks": 3,
+        "parallel_groups": 0,
+        "estimated_complexity": "medium"
+      }
+    }
+  },
+  "failure_response": {
+    "description": "Expected output when task fails",
+    "output": {
+      "success": false,
+      "task": "Add payment processing with Stripe",
+      "project_path": "/path/to/project",
+      "phases_completed": ["explore", "plan"],
+      "failed_phase": "code",
+      "failed_task": 2,
+      "total_tasks": 5,
+      "completed_tasks": 1,
+      "error": "Missing required dependency: stripe package not installed",
+      "error_details": {
+        "task_id": 2,
+        "task_title": "Implement Stripe payment handler",
+        "issue": "Cannot import stripe module",
+        "attempted_resolution": "Tried to install via npm but blocked by security sandbox",
+        "suggestion": "Install stripe package manually: npm install stripe"
+      },
+      "partial_results": {
+        "files_modified": [
+          {
+            "path": "src/config/payment.ts",
+            "action": "created",
+            "summary": "Payment configuration structure"
+          }
+        ],
+        "tests_added": []
+      },
+      "resume_available": true,
+      "resume_from_task": 2
+    }
+  },
+  "blocked_response": {
+    "description": "Expected output when task is blocked",
+    "output": {
+      "success": false,
+      "task": "Integrate with external API",
+      "project_path": "/path/to/project",
+      "phases_completed": ["explore"],
+      "failed_phase": "plan",
+      "error": "Insufficient information to create plan",
+      "error_details": {
+        "missing_information": [
+          "API endpoint documentation",
+          "Authentication method",
+          "Expected request/response formats"
+        ],
+        "questions_for_user": [
+          "What is the base URL for the external API?",
+          "How should we authenticate (API key, OAuth, etc.)?",
+          "Can you provide sample request/response examples?"
+        ]
+      },
+      "exploration_results": {
+        "project_overview": {
+          "type": "Node.js API",
+          "language": "TypeScript"
+        },
+        "relevant_files": [
+          {
+            "path": "src/services/external.ts",
+            "purpose": "Existing external service integrations"
+          }
+        ]
+      },
+      "resume_available": false
+    }
+  },
+  "task_completion_report": {
+    "description": "Per-task completion report from coder phase",
+    "output": {
+      "task_id": 1,
+      "status": "completed",
+      "files_modified": [
+        {
+          "path": "apps/web/src/stores/theme.ts",
+          "action": "created",
+          "summary": "Created Zustand theme store with useTheme hook and localStorage persistence"
+        }
+      ],
+      "tests_added": [
+        {
+          "path": "apps/web/src/stores/__tests__/theme.test.ts",
+          "tests": [
+            "should initialize with system preference",
+            "should toggle between light and dark",
+            "should persist theme across reloads"
+          ]
+        }
+      ],
+      "success_criteria_met": [
+        {
+          "criteria": "Theme store exports useTheme hook",
+          "met": true,
+          "evidence": "useTheme hook exported and returns {theme, setTheme, toggleTheme}"
+        },
+        {
+          "criteria": "Theme persists across page reloads",
+          "met": true,
+          "evidence": "Verified with localStorage.getItem('theme-storage') after reload"
+        }
+      ],
+      "issues_encountered": [
+        {
+          "issue": "Zustand persist middleware type error with TypeScript",
+          "resolution": "Added explicit StateCreator type annotation"
+        }
+      ],
+      "notes_for_next_task": "Theme store ready, next task should import useTheme from @/stores/theme"
+    }
+  },
+  "progress_file": {
+    "description": "Example .autonomous-coder/progress.json content",
+    "content": {
+      "task": "Add a dark mode toggle to the settings page",
+      "project_path": "/path/to/web-app",
+      "started_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:34:45Z",
+      "phase": "coding",
+      "status": "in_progress",
+      "exploration_results": {
+        "project_overview": {
+          "type": "Web Application",
+          "language": "TypeScript",
+          "framework": "Next.js"
+        }
+      },
+      "plan": {
+        "plan_summary": {
+          "title": "Dark Mode Toggle Implementation",
+          "estimated_tasks": 3,
+          "complexity": "medium"
+        },
+        "tasks": [
+          {"id": 1, "title": "Add theme state management"},
+          {"id": 2, "title": "Add theme CSS variables"},
+          {"id": 3, "title": "Add toggle to settings page"}
+        ],
+        "total_tasks": 3
+      },
+      "completed_tasks": [1],
+      "current_task": 2,
+      "total_tasks": 3,
+      "task_results": [
+        {
+          "task_id": 1,
+          "status": "completed",
+          "files_modified": ["apps/web/src/stores/theme.ts"],
+          "tests_added": ["apps/web/src/stores/__tests__/theme.test.ts"]
+        }
+      ]
+    }
+  }
+}

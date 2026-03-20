@@ -1,0 +1,232 @@
+{
+  "examples": [
+    {
+      "id": "simple_feature",
+      "name": "Add Simple Feature",
+      "description": "Adding a single new feature to an existing codebase",
+      "input": {
+        "task": "Add a dark mode toggle to the settings page",
+        "project_path": "/path/to/web-app"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 3
+    },
+    {
+      "id": "complex_feature",
+      "name": "Complex Multi-Part Feature",
+      "description": "Implementing a feature that touches multiple parts of the codebase",
+      "input": {
+        "task": "Implement a complete user notification system with email notifications for account events, in-app notification center, user preferences for notification types, and unsubscribe functionality",
+        "project_path": "/path/to/saas-app"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 8
+    },
+    {
+      "id": "bug_fix",
+      "name": "Bug Fix",
+      "description": "Fixing a specific bug in the codebase",
+      "input": {
+        "task": "Fix the race condition in the checkout process where concurrent requests can double-charge customers. The issue is in the payment processing module.",
+        "project_path": "/path/to/ecommerce"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 2
+    },
+    {
+      "id": "refactoring",
+      "name": "Code Refactoring",
+      "description": "Refactoring existing code for better architecture",
+      "input": {
+        "task": "Refactor the authentication module to use the repository pattern. Keep all existing functionality but improve testability and separation of concerns.",
+        "project_path": "/path/to/backend-api"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 5
+    },
+    {
+      "id": "testing",
+      "name": "Add Test Coverage",
+      "description": "Adding tests to existing code",
+      "input": {
+        "task": "Add comprehensive unit tests for the OrderService class. Cover all public methods including edge cases for invalid inputs, empty orders, and failed payments.",
+        "project_path": "/path/to/order-service"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 4
+    },
+    {
+      "id": "api_changes",
+      "name": "API Modifications",
+      "description": "Modifying existing API endpoints",
+      "input": {
+        "task": "Add pagination to the products API endpoint with page size parameter (default 20, max 100), cursor-based pagination for performance, total count in response headers, and update existing tests.",
+        "project_path": "/path/to/products-api"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 4
+    },
+    {
+      "id": "database_migration",
+      "name": "Database Schema Change",
+      "description": "Adding new database tables and updating models",
+      "input": {
+        "task": "Add a user_preferences table with user_id (foreign key to users), notification_email (boolean, default true), notification_push (boolean, default true), theme (enum: light, dark, system), and language (varchar, default 'en'). Include migration files and update the User model.",
+        "project_path": "/path/to/app-with-db"
+      },
+      "expected_phases": ["explore", "plan", "code"],
+      "expected_tasks": 4
+    }
+  ],
+  "configuration_examples": [
+    {
+      "name": "default",
+      "description": "Default configuration",
+      "config": {
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": 16000,
+        "max_turns": 30,
+        "sandbox_enabled": true
+      }
+    },
+    {
+      "name": "extended",
+      "description": "Extended configuration for complex tasks",
+      "config": {
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": 32000,
+        "max_turns": 50,
+        "sandbox_enabled": true,
+        "mcp_servers": {
+          "serena": {
+            "command": "uvx",
+            "args": ["serena"],
+            "env": {
+              "SERENA_PROJECT": "/path/to/project"
+            }
+          },
+          "sequential-thinking": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+          },
+          "Context7": {
+            "command": "npx",
+            "args": ["-y", "@upstash/context7-mcp"]
+          },
+          "firecrawl-mcp": {
+            "command": "npx",
+            "args": ["-y", "firecrawl-mcp"],
+            "env": {
+              "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "exploration_result_example": {
+    "project_overview": {
+      "type": "Web Application",
+      "language": "TypeScript",
+      "framework": "Next.js",
+      "structure": "Monorepo with apps/ and packages/ directories"
+    },
+    "architecture": {
+      "patterns": ["Component-based UI", "API Routes", "Repository Pattern"],
+      "main_components": ["apps/web", "packages/ui", "packages/database"],
+      "entry_points": ["apps/web/src/pages/_app.tsx"],
+      "data_flow": "React Query for server state, Zustand for client state"
+    },
+    "coding_conventions": {
+      "naming": "camelCase for variables, PascalCase for components",
+      "imports": "Absolute imports with @/ prefix",
+      "documentation": "JSDoc for public APIs",
+      "testing": "Jest with React Testing Library"
+    },
+    "relevant_files": [
+      {
+        "path": "apps/web/src/pages/settings.tsx",
+        "purpose": "Settings page where dark mode toggle will be added",
+        "modification_type": "modify",
+        "key_symbols": ["SettingsPage", "useSettings"]
+      },
+      {
+        "path": "packages/ui/src/components/Toggle.tsx",
+        "purpose": "Existing toggle component to reuse",
+        "modification_type": "reference",
+        "key_symbols": ["Toggle", "ToggleProps"]
+      }
+    ],
+    "dependencies": {
+      "internal": ["@myapp/ui", "@myapp/database"],
+      "external": ["next", "react", "zustand", "@tanstack/react-query"]
+    },
+    "risks": [
+      {
+        "area": "State persistence",
+        "description": "Dark mode preference needs to persist across sessions",
+        "mitigation": "Use localStorage with Zustand persist middleware"
+      }
+    ],
+    "recommendations": [
+      "Use existing Toggle component from @myapp/ui",
+      "Store preference in localStorage for persistence",
+      "Add CSS variables for theme colors"
+    ]
+  },
+  "plan_example": {
+    "plan_summary": {
+      "title": "Dark Mode Toggle Implementation",
+      "description": "Add dark mode support with user preference persistence",
+      "estimated_tasks": 3,
+      "complexity": "medium",
+      "approach": "CSS variables for theming, Zustand for state, localStorage for persistence"
+    },
+    "prerequisites": [
+      {
+        "item": "@myapp/ui Toggle component exists",
+        "status": "met",
+        "action": null
+      }
+    ],
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Add theme state management",
+        "description": "Create Zustand store for theme with localStorage persistence",
+        "files": [
+          {
+            "path": "apps/web/src/stores/theme.ts",
+            "action": "create",
+            "changes": "New Zustand store with persist middleware"
+          }
+        ],
+        "dependencies": [],
+        "success_criteria": [
+          "Theme store exports useTheme hook",
+          "Theme persists across page reloads"
+        ],
+        "testing": {
+          "unit_tests": ["Theme store toggles correctly", "Persistence works"],
+          "integration_tests": [],
+          "manual_verification": ["Toggle theme, refresh, verify persisted"]
+        },
+        "rollback": "Delete apps/web/src/stores/theme.ts",
+        "notes": "Use 'system' as default to respect OS preference"
+      }
+    ],
+    "total_tasks": 3,
+    "parallel_groups": [],
+    "validation_checkpoints": [
+      {
+        "after_task": 2,
+        "validation": "Verify theme CSS variables apply correctly"
+      }
+    ],
+    "completion_criteria": [
+      "Dark mode toggle visible on settings page",
+      "Theme applies to entire application",
+      "Preference persists across sessions"
+    ]
+  }
+}

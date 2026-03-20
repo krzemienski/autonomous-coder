@@ -1,0 +1,78 @@
+# TUI Agent Orchestration System — Architecture Overview
+
+**Type:** Architecture Diagram
+**Last Updated:** 2026-03-19
+**Related Files:**
+- `app.py` — Textual App entry point
+- `orchestrator.py` — Phase pipeline engine
+- `agent_factory.py` — ClaudeCodeOptions builder
+- `memory.py` — SQLite + FTS5 persistence
+- `security.py` — Command allowlist + can_use_tool callback
+
+## Purpose
+
+Shows how the four-layer architecture (TUI → Orchestration → SDK → Persistence) delivers real-time visibility into autonomous coding sessions, replacing opaque CLI output with a live multi-pane dashboard.
+
+## Diagram
+
+```mermaid
+graph TB
+    subgraph "Front-Stage — User Experience"
+        U[👤 User launches TUI]
+        U --> |"python -m autonomous_coder 'task'"| APP
+
+        subgraph "TUI Layer — What Users See"
+            APP[AutonomousCoderApp<br/>⚡ Instant visual feedback]
+            AT[AgentTree<br/>📊 Live agent status sidebar]
+            TABS[AgentTabs<br/>📝 Streaming output per agent]
+            PROG[ProgressPanel<br/>📈 Phase & task progress]
+            COST[CostDisplay<br/>💰 Real-time spend tracking]
+            TD[TaskDetail<br/>📋 Current task context]
+        end
+
+        APP --> AT & TABS & PROG & COST & TD
+    end
+
+    subgraph "Back-Stage — Technical Implementation"
+        subgraph "Orchestration Layer"
+            ORCH[AgentOrchestrator<br/>⏱️ Keeps phases sequential to avoid conflicts]
+            PR[PhaseRunners<br/>🔄 R→E→P→C pipeline with budget gates]
+            AF[AgentFactory<br/>⚙️ Per-role ClaudeCodeOptions]
+        end
+
+        subgraph "SDK Layer — claude-code-sdk v0.0.25"
+            Q["query() calls<br/>⚡ One per agent, not nested"]
+            CUT["can_use_tool callback<br/>🛡️ Blocks dangerous commands BEFORE execution"]
+            HOOKS["PreToolUse hooks<br/>📊 Observability without blocking"]
+            RM["ResultMessage<br/>💰 total_cost_usd for manual budget tracking"]
+        end
+
+        subgraph "Persistence Layer"
+            SQL["SQLite + FTS5 + WAL<br/>💾 Zero-dependency, crash-safe storage"]
+            SESS["Session Management<br/>🔄 Resume interrupted work via session_id"]
+            COSTDB["Cost Aggregation<br/>📊 Per-agent, per-phase breakdown"]
+        end
+    end
+
+    APP -.->|"Textual Messages"| ORCH
+    ORCH --> PR --> AF --> Q
+    Q --> CUT & HOOKS
+    Q --> RM --> COSTDB
+    ORCH --> SQL & SESS
+
+    style U fill:#f9f,stroke:#333
+    style APP fill:#e1f5fe
+    style CUT fill:#c8e6c9
+    style SQL fill:#fff3e0
+```
+
+## Key Insights
+
+- **User impact**: Every agent action is visible in real-time through Textual Message dispatch — no more watching blank terminal output
+- **Security**: `can_use_tool` callback blocks dangerous Bash commands BEFORE execution (not after, like the legacy client.py)
+- **Cost control**: Manual budget tracking via `ResultMessage.total_cost_usd` with configurable per-role limits — no phantom SDK field
+- **Resilience**: SQLite WAL mode + session resume means interrupted work can be continued
+
+## Change History
+
+- **2026-03-19:** Initial architecture diagram created during Phase A implementation
