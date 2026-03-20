@@ -1,280 +1,191 @@
-# Autonomous Coder Skill
+# Autonomous Coder
 
-An advanced Claude Code Skill that implements a three-phase architecture for autonomous task implementation on existing codebases.
+A TUI-based multi-agent orchestration system for autonomous coding, built on the Claude Code SDK (Python).
 
-## Overview
+## What It Does
 
-The Autonomous Coder skill transforms Claude Code into a fully autonomous coding agent that can:
+Launches a real-time terminal dashboard that orchestrates multiple Claude agents through a four-phase pipeline:
 
-1. **Explore** - Deep codebase analysis using Serena MCP for semantic understanding
-2. **Plan** - Create detailed, dependency-aware implementation plans
-3. **Code** - Iteratively implement tasks with verification and testing
+1. **Research** — Discovers relevant tools, libraries, and patterns via web research
+2. **Explore** — Analyzes your codebase semantically using Serena MCP
+3. **Plan** — Creates a detailed, dependency-aware implementation plan
+4. **Code** — Implements tasks iteratively with live streaming output and code review
 
-Unlike simple code generation, this skill understands your entire codebase context before making any changes.
-
-## Architecture
+Each agent runs as a separate `query()` call with its own model, tools, budget limit, and security constraints — all visible in real-time through the TUI.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Autonomous Coder                         │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐       │
-│  │   Explorer  │──▶│   Planner   │──▶│   Coder     │       │
-│  │  (Serena)   │   │  (Atomic)   │   │ (Iterative) │       │
-│  └─────────────┘   └─────────────┘   └─────────────┘       │
-│         │                │                │                 │
-│         ▼                ▼                ▼                 │
-│  ┌─────────────────────────────────────────────────┐       │
-│  │           Progress Tracker (JSON)                │       │
-│  │     .autonomous-coder/progress.json             │       │
-│  └─────────────────────────────────────────────────┘       │
-├─────────────────────────────────────────────────────────────┤
-│  Security: OS Sandbox │ Filesystem Restrictions │ Bash Hook │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Requirements
-
-### Python Dependencies
-
-```bash
-pip install claude-code-sdk
-```
-
-### MCP Servers Required
-
-1. **Serena MCP** (Required) - For codebase semantic analysis
-   - Provides: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `search_for_pattern`
-   - Installation: Follow [Serena MCP setup guide](https://github.com/serena-ai/serena-mcp)
-
-2. **Puppeteer MCP** (Optional) - For browser automation in web projects
-   - Provides: Navigation, screenshots, form interaction
-   - Installation: Follow [Puppeteer MCP setup guide](https://github.com/anthropics/mcp-server-puppeteer)
-
-## Installation
-
-### Option 1: Personal Installation (Recommended)
-
-```bash
-# Navigate to the skill folder
-cd path/to/claude-code-skills-factory/generated-skills/autonomous-coder
-
-# Copy to personal skills directory
-cp -r . ~/.claude/skills/autonomous-coder/
-
-# Restart Claude Code
-```
-
-### Option 2: Project-Level Installation
-
-```bash
-# Copy to project skills directory
-cp -r . /path/to/your/project/.claude/skills/autonomous-coder/
-
-# Restart Claude Code
-```
-
-### Option 3: Python Package Installation
-
-```bash
-# Install as Python package (for programmatic use)
-cd path/to/claude-code-skills-factory/generated-skills/autonomous-coder
-pip install -e .
+┌─────────────────────────────────────────────────────────────────────┐
+│ [Header] Autonomous Coder v2.0  │ Model: sonnet-4.5 │ $0.1234 │ ⏱ │
+├────────────────┬────────────────────────────────────────────────────┤
+│ AGENTS         │ ACTIVE AGENT OUTPUT                    [Tabs]      │
+│ ┌────────────┐ │ ┌─[Research]──[Explore]──[Plan]──[Code]─────────┐ │
+│ │ ▶ Research │ │ │  Streaming output from the currently           │ │
+│ │   Explore  │ │ │  selected agent appears here in real-time.     │ │
+│ │   Planner  │ │ │                                                │ │
+│ │   Coder    │ │ │  [Tool: Bash] Running: npm install...          │ │
+│ │            │ │ │  [Tool: Write] Created: src/auth.ts            │ │
+│ └────────────┘ │ └────────────────────────────────────────────────┘ │
+├────────────────┼────────────────────────────────────────────────────┤
+│ PROGRESS       │ TASK DETAILS                                      │
+│ ████░░ 43%     │ Task 3/7: Add JWT middleware                      │
+│ ✓ 1. Setup     │ Status: In Progress                               │
+│ ▶ 3. Auth      │ Cost: $0.05                                       │
+└────────────────┴────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
 
-### Via Slash Command (Recommended)
-
-After installing the skill, use the included slash command:
-
-```
-/autonomous-code Add user authentication with JWT tokens
-```
-
-### Via Python API
-
-```python
-from autonomous_coder import run_autonomous_coder
-
-result = await run_autonomous_coder(
-    task="Add user authentication with JWT tokens",
-    project_path="/path/to/your/project"
-)
-
-if result["success"]:
-    print(f"Completed {result['completed_tasks']} tasks")
-else:
-    print(f"Failed: {result['error']}")
-```
-
-### Via CLI
-
 ```bash
-# Run as CLI tool
-python -m autonomous_coder \
-    --task "Add user authentication with JWT" \
-    --project /path/to/your/project
+# Install dependencies
+pip install claude-code-sdk textual
+
+# Run with a task
+python -m autonomous_coder "Add user authentication with JWT tokens"
+
+# Or launch the TUI without a task
+python -m autonomous_coder
 ```
 
-## Configuration
+### Keyboard Shortcuts
 
-### Environment Variables
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `p` | Pause pipeline |
+| `r` | Resume pipeline |
+| `c` | Cancel current agent |
+| `Tab` | Cycle agent tabs |
+| `/` | Command palette |
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
-| `AUTONOMOUS_CODER_MODEL` | Claude model to use | `claude-sonnet-4-20250514` |
-| `AUTONOMOUS_CODER_MAX_TOKENS` | Max tokens per request | `16000` |
-| `AUTONOMOUS_CODER_MAX_TURNS` | Max conversation turns | `30` |
+## Architecture
 
-### MCP Server Configuration
-
-The skill automatically configures MCP servers. To customize, modify `client.py`:
-
-```python
-mcp_servers = {
-    "serena": {
-        "command": "npx",
-        "args": ["-y", "@anthropic/mcp-server-serena"],
-        "env": {"PROJECT_PATH": project_path}
-    }
-}
 ```
+┌──────────────────────────────────────────────────────────────────┐
+│                    TUI LAYER (Textual v7.0.0)                    │
+│  AgentTree │ AgentTabs │ ProgressPanel │ CostDisplay │ TaskDetail│
+├──────────────────────────────────────────────────────────────────┤
+│                    ORCHESTRATION LAYER                            │
+│  AgentOrchestrator │ PhaseRunners (R→E→P→C) │ AgentFactory       │
+├──────────────────────────────────────────────────────────────────┤
+│                    SDK LAYER (claude-code-sdk v0.0.25)            │
+│  query() │ ClaudeCodeOptions │ can_use_tool │ ResultMessage       │
+├──────────────────────────────────────────────────────────────────┤
+│                    PERSISTENCE LAYER                             │
+│  SQLite + FTS5 + WAL │ Session Management │ Cost Aggregation     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Key Design Decisions
+
+- **`ClaudeCodeOptions` only** — Uses only verified fields from `claude-code-sdk v0.0.25`. No fabricated API.
+- **`can_use_tool` for security** — Pre-execution Bash command validation via `PermissionResultAllow`/`PermissionResultDeny`. Blocks dangerous commands *before* they run.
+- **Manual budget tracking** — `ResultMessage.total_cost_usd` accumulated per-agent with configurable limits. No phantom `max_budget_usd` field.
+- **Textual Messages for UI** — Built-in `post_message()` system, no custom EventBus. 8 message types: `AgentStarted`, `AgentOutput`, `AgentCompleted`, `AgentError`, `CostUpdate`, `SecurityBlock`, `PhaseStarted`, `PhaseCompleted`.
+- **PhaseRunner protocol** — Each phase implements `async def run(context: PhaseContext) -> PhaseResult`. Composable and extensible.
+- **Sequential pipeline v1** — Phases run sequentially to avoid file conflicts. Parallel execution deferred to v2.
+
+## Requirements
+
+- Python 3.12+
+- [claude-code-sdk](https://pypi.org/project/claude-code-sdk/) v0.0.25+
+- [Textual](https://pypi.org/project/textual/) v7.0.0+
+- Claude Code CLI installed and authenticated
+
+### MCP Servers (auto-configured)
+
+| Server | Phase | Purpose |
+|--------|-------|---------|
+| Serena | Explore, Plan, Code | Semantic code analysis |
+| Context7 | Research, Code | Library documentation |
+| Firecrawl | Research | Web research and scraping |
+| Sequential Thinking | Plan | Step-by-step reasoning |
+
+## Budget Configuration
+
+Default budget allocation ($5.00 total):
+
+| Role | Budget | Model | Max Turns |
+|------|--------|-------|-----------|
+| Research | $0.50 | claude-sonnet-4-5 | 25 |
+| Explore | $0.50 | claude-sonnet-4-5 | 20 |
+| Plan | $1.00 | claude-sonnet-4-5 | 10 |
+| Code | $2.00 | claude-sonnet-4-5 | 30 |
+| Reviewer | $0.25 | claude-sonnet-4-5 | 10 |
+
+Budget is enforced per-role via `ResultMessage.total_cost_usd` accumulation. Exceeding a role's budget stops that agent gracefully.
 
 ## Security Model
 
-The skill implements defense-in-depth security:
+Defense-in-depth with three layers:
 
-1. **OS Sandbox** - Enabled by default, restricts system access
-2. **Filesystem Restrictions** - Limited to project directory
-3. **Bash Allowlist** - Only safe commands permitted
-4. **Security Hook** - Validates all bash commands before execution
-
-### Allowed Commands
-
-```python
-ALLOWED_COMMANDS = [
-    "ls", "cat", "head", "tail", "grep", "find", "wc",
-    "git", "npm", "npx", "yarn", "pnpm", "bun",
-    "python", "python3", "pip", "pip3", "poetry", "uv",
-    "node", "tsc", "eslint", "prettier",
-    "cargo", "rustc", "rustfmt",
-    "go", "gofmt",
-    "make", "cmake",
-    "pytest", "jest", "vitest", "mocha",
-    "echo", "pwd", "which", "env", "printenv",
-    "mkdir", "touch", "cp", "mv"
-]
-```
-
-### Dangerous Patterns (Blocked)
-
-```python
-DANGEROUS_PATTERNS = [
-    r"rm\s+-rf\s+/",
-    r"chmod\s+777",
-    r"curl.*\|\s*(bash|sh)",
-    r"wget.*\|\s*(bash|sh)",
-    r">\s*/etc/",
-    r"sudo\s+",
-    r":\(\)\s*\{",  # Fork bomb
-]
-```
+1. **`can_use_tool` callback** — Called by the SDK *before* every tool execution. Blocks Bash commands not in the allowlist. Returns `PermissionResultDeny(interrupt=False)` so the agent can try alternatives.
+2. **Command allowlist** — 142 curated safe commands (package managers, build tools, runtimes, linters, shell utilities).
+3. **Dangerous pattern blocklist** — 20 patterns always blocked regardless of allowlist (`rm -rf /`, fork bombs, `curl | sh`, etc.).
 
 ## File Structure
 
 ```
 autonomous-coder/
-├── SKILL.md              # Skill definition
-├── README.md             # This file
-├── HOW_TO_USE.md         # Detailed usage examples
-├── __init__.py           # Package initialization
-├── agent.py              # Main orchestrator (3-phase workflow)
-├── client.py             # Claude SDK client with MCP
-├── progress.py           # Progress tracking and persistence
-├── prompts.py            # Prompt template loading
-├── security.py           # Security hooks and validation
-├── prompts/              # Prompt templates
-│   ├── explorer_prompt.md
-│   ├── planner_prompt.md
-│   └── coder_prompt.md
-├── sample_input.json     # Example inputs
-└── expected_output.json  # Expected outputs
+├── app.py                    # Textual App entry point
+├── orchestrator.py           # Phase pipeline engine + PhaseRunner protocol
+├── agent_factory.py          # ClaudeCodeOptions builder per role
+├── agent_instance.py         # Agent lifecycle + budget tracking
+├── messages.py               # Textual Message subclasses (8 types)
+├── config.py                 # Role configs, MCP servers, budget limits
+├── memory.py                 # SQLite + FTS5 + WAL persistence
+├── security.py               # Command allowlist + can_use_tool callback
+├── styles.tcss               # TUI CSS styling
+├── __main__.py               # python -m autonomous_coder entry point
+├── __init__.py               # Package exports (v2.0)
+├── widgets/                  # TUI widgets
+│   ├── agent_tree.py         # Agent sidebar with status icons
+│   ├── agent_tabs.py         # Tabbed streaming output per agent
+│   ├── streaming_log.py      # Rich-formatted log display
+│   ├── progress_panel.py     # Phase + task progress bars
+│   ├── task_detail.py        # Current task metadata
+│   └── cost_display.py       # Real-time cost tracking
+├── agents/                   # PhaseRunner implementations
+│   ├── research.py           # ResearchPhaseRunner
+│   ├── explorer.py           # ExplorerPhaseRunner
+│   ├── planner.py            # PlannerPhaseRunner
+│   └── coder.py              # CoderPhaseRunner (+ reviewer)
+├── prompts/                  # Phase-specific prompt templates
+├── ai/diagrams/              # DDD architecture diagrams
+│── agent.py                  # Legacy CLI orchestrator
+├── client.py                 # Legacy SDK client
+├── progress.py               # Legacy progress tracker
+└── researcher.py             # Legacy research phase
 ```
 
-## Progress Tracking
-
-The skill maintains state in `.autonomous-coder/progress.json`:
-
-```json
-{
-  "task": "Add user authentication",
-  "phase": "coding",
-  "status": "in_progress",
-  "exploration_results": {...},
-  "plan": {...},
-  "completed_tasks": [1, 2],
-  "current_task": 3,
-  "total_tasks": 5
-}
-```
-
-This enables:
-- **Session Resume** - Continue interrupted work
-- **Progress Visibility** - Track completion percentage
-- **Rollback Support** - Undo failed tasks
-
-## Troubleshooting
-
-### MCP Server Connection Issues
-
-```bash
-# Verify Serena MCP is accessible
-npx -y @anthropic/mcp-server-serena --help
-
-# Check Claude Code MCP configuration
-cat ~/.claude/mcp_servers.json
-```
-
-### Permission Denied Errors
-
-```bash
-# Ensure project directory is accessible
-ls -la /path/to/your/project
-
-# Check sandbox settings
-# Disable sandbox for debugging (not recommended for production)
-AUTONOMOUS_CODER_SANDBOX=false python -m autonomous_coder ...
-```
-
-### Rate Limiting
-
-The skill automatically handles rate limits with exponential backoff. For heavy usage:
+## Programmatic API
 
 ```python
-# Increase delay between requests
-result = await run_autonomous_coder(
-    task="...",
-    project_path="...",
-    request_delay=2.0  # seconds between API calls
+from autonomous_coder import (
+    AutonomousCoderApp,
+    AgentOrchestrator,
+    OrchestratorConfig,
+    AgentFactory,
+    MemoryStore,
 )
+
+# Launch TUI
+app = AutonomousCoderApp(task="Add auth", project_path="/my/project")
+app.run()
+
+# Or use the orchestrator headlessly (no TUI)
+config = OrchestratorConfig(project_path=Path("/my/project"))
+orchestrator = AgentOrchestrator(config=config)
+results = await orchestrator.run_pipeline("Add auth", runners)
 ```
 
-## Contributing
+## Architecture Diagrams
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `pytest tests/`
-5. Submit a pull request
+See [`ai/diagrams/`](ai/diagrams/README.md) for DDD (Diagram Driven Development) diagrams:
+- [System Architecture Overview](ai/diagrams/architecture/arch-system-overview.md)
+- [Agent Pipeline Journey](ai/diagrams/journeys/sequence-agent-pipeline.md)
+- [Security Pipeline](ai/diagrams/features/feature-security-pipeline.md)
+- [Cost Tracking](ai/diagrams/features/feature-cost-tracking.md)
 
 ## License
 
-MIT License - See LICENSE file for details.
-
-## Related Skills
-
-- **Prompt Factory** - Generate prompts for any role or industry
-- **AWS Solution Architect** - Design AWS architectures
-- **Hook Factory** - Create Claude Code hooks
+MIT
