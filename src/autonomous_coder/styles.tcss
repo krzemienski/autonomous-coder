@@ -1,23 +1,18 @@
 /* Autonomous Coder TUI Styles */
 
 Screen {
-    layout: grid;
-    grid-size: 2 3;
-    grid-columns: 30 1fr;
-    grid-rows: auto 1fr auto;
+    layout: vertical;
 }
 
 Header {
-    column-span: 2;
     background: $primary-darken-2;
 }
 
 Footer {
-    column-span: 2;
 }
 
 #sidebar {
-    row-span: 1;
+    width: 30;
     height: 100%;
     border-right: solid $primary-darken-1;
 }
