@@ -116,6 +116,29 @@ class SecurityBlock(Message):
         self.reason = reason
 
 
+class AgentLifecycle(Message):
+    """Fired for agent lifecycle state transitions.
+
+    Used to provide real-time visibility into what the agent is doing:
+    connecting to API, sending prompt, waiting for response, streaming, etc.
+    """
+
+    def __init__(self, agent_name: str, state: str, detail: str = "") -> None:
+        """Initialize AgentLifecycle message.
+
+        Args:
+            agent_name: Agent emitting the lifecycle event.
+            state: Lifecycle state — one of: "init", "connecting",
+                "prompt_sent", "waiting", "streaming", "tool_calling",
+                "tool_result", "budget_check", "complete", "error".
+            detail: Optional human-readable detail about the state.
+        """
+        super().__init__()
+        self.agent_name = agent_name
+        self.state = state
+        self.detail = detail
+
+
 class PhaseStarted(Message):
     """Fired when a pipeline phase begins."""
 
@@ -143,6 +166,7 @@ class PhaseCompleted(Message):
         cost: float,
         duration: float,
         success: bool,
+        error: str | None = None,
     ) -> None:
         """Initialize PhaseCompleted message.
 
@@ -152,6 +176,7 @@ class PhaseCompleted(Message):
             cost: Cost incurred during this phase in USD.
             duration: Wall-clock seconds for the phase.
             success: True if the phase completed successfully.
+            error: Error message if the phase failed.
         """
         super().__init__()
         self.phase = phase
@@ -159,3 +184,4 @@ class PhaseCompleted(Message):
         self.cost = cost
         self.duration = duration
         self.success = success
+        self.error = error

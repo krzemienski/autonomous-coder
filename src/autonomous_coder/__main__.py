@@ -78,10 +78,10 @@ def _run_cli(task: str, project_path: Path, *, verbose: bool = False) -> None:
     orchestrator = AgentOrchestrator(config=config, app=adapter)
 
     runners = {
-        "research": ResearchPhaseRunner(orchestrator.factory),
-        "explore": ExplorerPhaseRunner(orchestrator.factory),
-        "plan": PlannerPhaseRunner(orchestrator.factory),
-        "code": CoderPhaseRunner(orchestrator.factory),
+        "research": ResearchPhaseRunner(orchestrator.factory, orchestrator),
+        "explore": ExplorerPhaseRunner(orchestrator.factory, orchestrator),
+        "plan": PlannerPhaseRunner(orchestrator.factory, orchestrator),
+        "code": CoderPhaseRunner(orchestrator.factory, orchestrator),
     }
 
     print(f"Autonomous Coder — CLI Mode")

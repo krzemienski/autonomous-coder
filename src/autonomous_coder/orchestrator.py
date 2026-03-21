@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
@@ -15,6 +16,7 @@ from .config import OrchestratorConfig
 from .messages import (
     AgentCompleted,
     AgentError,
+    AgentLifecycle,
     AgentOutput,
     AgentStarted,
     CostUpdate,
@@ -217,6 +219,7 @@ class AgentOrchestrator:
                 cost=result.cost_incurred,
                 duration=result.duration_seconds,
                 success=result.success,
+                error=result.error,
             ))
 
             if not result.success:
@@ -268,8 +271,15 @@ class AgentOrchestrator:
 
         collected_text: list[str] = []
 
+        # Use streaming mode if can_use_tool is set (SDK requirement)
+        prompt_arg: str | AsyncIterator[dict[str, Any]]
+        if options.can_use_tool is not None:
+            prompt_arg = _string_to_stream(prompt)
+        else:
+            prompt_arg = prompt
+
         try:
-            async for msg in query(prompt=prompt, options=options):
+            async for msg in query(prompt=prompt_arg, options=options):
                 if self._cancelled:
                     break
 
@@ -327,6 +337,166 @@ class AgentOrchestrator:
         return "\n".join(collected_text), agent.cost
 
     # ------------------------------------------------------------------
+    # Reusable query helper for phase runners
+    # ------------------------------------------------------------------
+
+    async def run_query(
+        self,
+        role: str,
+        phase: str,
+        prompt: str,
+        system_prompt: str,
+        budget_remaining: float,
+    ) -> tuple[str, float]:
+        """Run a query() call with full lifecycle observability.
+
+        This is the preferred way for PhaseRunners to execute SDK queries.
+        It emits AgentStarted, AgentLifecycle, AgentOutput, CostUpdate,
+        and AgentCompleted messages so the UI always knows what's happening.
+
+        Args:
+            role: Role key for agent options.
+            phase: Phase label for messages.
+            prompt: User-turn prompt.
+            system_prompt: System prompt.
+            budget_remaining: Max spend for this query.
+
+        Returns:
+            Tuple of (collected_text, cost_incurred).
+        """
+        agent_name = f"{phase}-{role}"
+
+        self._post_message(AgentStarted(agent_name=agent_name, phase=phase))
+        self._post_message(AgentLifecycle(
+            agent_name=agent_name,
+            state="init",
+            detail=f"role={role}, model={self.config.roles[role].model}",
+        ))
+
+        options = self.factory.create_options(
+            role=role,
+            system_prompt=system_prompt,
+            security_callback=security_callback,
+        )
+
+        self._post_message(AgentLifecycle(
+            agent_name=agent_name,
+            state="connecting",
+            detail=f"prompt length: {len(prompt)} chars",
+        ))
+
+        # Use streaming mode if can_use_tool is set (SDK requirement)
+        prompt_arg: str | AsyncIterator[dict[str, Any]]
+        if options.can_use_tool is not None:
+            prompt_arg = _string_to_stream(prompt)
+        else:
+            prompt_arg = prompt
+
+        collected_text: list[str] = []
+        total_cost = 0.0
+        first_token_received = False
+        tool_count = 0
+        start_time = time.time()
+
+        self._post_message(AgentLifecycle(
+            agent_name=agent_name,
+            state="prompt_sent",
+        ))
+
+        try:
+            async for msg in query(prompt=prompt_arg, options=options):
+                if self._cancelled:
+                    break
+
+                if isinstance(msg, AssistantMessage):
+                    if not first_token_received:
+                        first_token_received = True
+                        wait_time = time.time() - start_time
+                        self._post_message(AgentLifecycle(
+                            agent_name=agent_name,
+                            state="streaming",
+                            detail=f"first token after {wait_time:.1f}s",
+                        ))
+
+                    for block in msg.content:
+                        if isinstance(block, TextBlock):
+                            collected_text.append(block.text)
+                            self._post_message(AgentOutput(
+                                agent_name=agent_name,
+                                text=block.text,
+                                block_type="text",
+                            ))
+                        elif isinstance(block, ToolUseBlock):
+                            tool_count += 1
+                            summary = _summarize_tool_input(block.input)
+                            self._post_message(AgentLifecycle(
+                                agent_name=agent_name,
+                                state="tool_calling",
+                                detail=f"#{tool_count} {block.name}: {summary}",
+                            ))
+                            self._post_message(AgentOutput(
+                                agent_name=agent_name,
+                                text=f"[Tool: {block.name}] {summary}",
+                                block_type="tool",
+                            ))
+
+                elif isinstance(msg, ResultMessage):
+                    cost = msg.total_cost_usd or 0.0
+                    total_cost += cost
+                    self.total_cost += cost
+
+                    self._post_message(CostUpdate(
+                        agent_name=agent_name,
+                        cost=cost,
+                        total_cost=self.total_cost,
+                    ))
+
+                    if total_cost > budget_remaining:
+                        self._post_message(AgentLifecycle(
+                            agent_name=agent_name,
+                            state="budget_check",
+                            detail=f"${total_cost:.4f} exceeds budget ${budget_remaining:.4f}",
+                        ))
+                        break
+
+            duration = time.time() - start_time
+            self._post_message(AgentLifecycle(
+                agent_name=agent_name,
+                state="complete",
+                detail=f"{len(collected_text)} text blocks, {tool_count} tool calls, {duration:.1f}s",
+            ))
+            self._post_message(AgentCompleted(
+                agent_name=agent_name,
+                phase=phase,
+                cost=total_cost,
+                duration=duration,
+                success=True,
+            ))
+
+        except Exception as exc:  # noqa: BLE001
+            duration = time.time() - start_time
+            self._post_message(AgentLifecycle(
+                agent_name=agent_name,
+                state="error",
+                detail=str(exc),
+            ))
+            self._post_message(AgentError(
+                agent_name=agent_name,
+                error=str(exc),
+                phase=phase,
+            ))
+            self._post_message(AgentCompleted(
+                agent_name=agent_name,
+                phase=phase,
+                cost=total_cost,
+                duration=duration,
+                success=False,
+                error=str(exc),
+            ))
+
+        return "\n".join(collected_text), total_cost
+
+    # ------------------------------------------------------------------
     # Control interface
     # ------------------------------------------------------------------
 
@@ -346,6 +516,20 @@ class AgentOrchestrator:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+async def _string_to_stream(prompt: str) -> AsyncIterator[dict[str, Any]]:
+    """Wrap a plain string prompt as an AsyncIterator for streaming mode.
+
+    The SDK requires an AsyncIterable prompt when can_use_tool is set.
+    This yields a single user message then returns.
+    """
+    yield {
+        "type": "user",
+        "message": {"role": "user", "content": prompt},
+        "parent_tool_use_id": None,
+        "session_id": "",
+    }
 
 
 def _summarize_tool_input(tool_input: dict) -> str:

@@ -12,6 +12,7 @@ from typing import Any
 from .messages import (
     AgentCompleted,
     AgentError,
+    AgentLifecycle,
     AgentOutput,
     AgentStarted,
     CostUpdate,
@@ -60,6 +61,8 @@ class CliAdapter:
             self._on_agent_error(message)
         elif isinstance(message, CostUpdate):
             self._on_cost_update(message)
+        elif isinstance(message, AgentLifecycle):
+            self._on_agent_lifecycle(message)
         elif isinstance(message, SecurityBlock):
             self._on_security_block(message)
 
@@ -72,6 +75,24 @@ class CliAdapter:
         m, s = divmod(secs, 60)
         return f"{m:02d}:{s:02d}"
 
+    def _ts(self) -> str:
+        """Return a compact timestamp for verbose output."""
+        return time.strftime("%H:%M:%S")
+
+    # -- Lifecycle states mapped to human-readable labels --
+    _LIFECYCLE_LABELS = {
+        "init": "Initializing agent",
+        "connecting": "Connecting to Claude API",
+        "prompt_sent": "Prompt sent, waiting for first token",
+        "waiting": "Waiting for API response",
+        "streaming": "Receiving response stream",
+        "tool_calling": "Agent calling tool",
+        "tool_result": "Tool result received",
+        "budget_check": "Checking budget",
+        "complete": "Agent query complete",
+        "error": "Error occurred",
+    }
+
     def _on_phase_started(self, msg: PhaseStarted) -> None:
         """Print a banner when a new pipeline phase begins."""
         self._current_phase = msg.phase
@@ -80,20 +101,35 @@ class CliAdapter:
         print(f"\n{'='*60}")
         print(f"  Phase {idx}/{total}: {msg.phase.upper()}")
         print(f"{'='*60}")
+        if self.verbose:
+            print(f"  [{self._ts()}] Phase started")
 
     def _on_phase_completed(self, msg: PhaseCompleted) -> None:
         status = "DONE" if msg.success else "FAILED"
-        print(f"  [{status}] {msg.phase} — ${msg.cost:.4f} in {msg.duration:.1f}s")
+        err = f"\n  Error: {msg.error}" if msg.error else ""
+        print(f"  [{status}] {msg.phase} — ${msg.cost:.4f} in {msg.duration:.1f}s{err}")
 
     def _on_agent_started(self, msg: AgentStarted) -> None:
         print(f"\n  >> Agent: {msg.agent_name} ({msg.phase})")
+        if self.verbose:
+            print(f"     [{self._ts()}] Agent spawned")
+
+    def _on_agent_lifecycle(self, msg: AgentLifecycle) -> None:
+        """Print lifecycle state transitions — always shown in verbose mode."""
+        if not self.verbose:
+            return
+        label = self._LIFECYCLE_LABELS.get(msg.state, msg.state)
+        detail = f" — {msg.detail}" if msg.detail else ""
+        print(f"     [{self._ts()}] {label}{detail}")
 
     def _on_agent_output(self, msg: AgentOutput) -> None:
         """Print agent output; tool calls always shown, text only in verbose mode."""
         if msg.block_type == "tool":
-            print(f"     {msg.text}")
+            if self.verbose:
+                print(f"     [{self._ts()}] Tool: {msg.text}")
+            else:
+                print(f"     {msg.text}")
         elif self.verbose:
-            # In verbose mode, stream all text output
             for line in msg.text.splitlines():
                 print(f"     {line}")
 
@@ -104,9 +140,13 @@ class CliAdapter:
 
     def _on_agent_error(self, msg: AgentError) -> None:
         print(f"  [ERROR] {msg.agent_name}: {msg.error}", file=sys.stderr)
+        if self.verbose:
+            print(f"     [{self._ts()}] Fatal error in {msg.phase}", file=sys.stderr)
 
     def _on_cost_update(self, msg: CostUpdate) -> None:
         self._total_cost = msg.total_cost
+        if self.verbose:
+            print(f"     [{self._ts()}] Cost: ${msg.cost:.4f} (total: ${msg.total_cost:.4f})")
 
     def _on_security_block(self, msg: SecurityBlock) -> None:
         print(f"  [BLOCKED] {msg.agent_name}: tool '{msg.tool_name}' — {msg.reason}")

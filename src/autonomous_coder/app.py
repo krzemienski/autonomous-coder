@@ -13,6 +13,7 @@ from textual.worker import Worker
 from .agents import ResearchPhaseRunner, ExplorerPhaseRunner, PlannerPhaseRunner, CoderPhaseRunner
 from .config import OrchestratorConfig
 from .messages import (
+    AgentLifecycle,
     AgentStarted,
     AgentOutput,
     AgentCompleted,
@@ -151,6 +152,11 @@ ProgressPanel ProgressBar { margin: 1 0; }
         tabs = self.query_one("#agent-tabs", AgentTabs)
         tabs.append_output(message.agent_name, message.text, message.block_type)
 
+    def on_agent_lifecycle(self, message: AgentLifecycle) -> None:
+        """Render lifecycle state transitions in the agent's output tab."""
+        tabs = self.query_one("#agent-tabs", AgentTabs)
+        tabs.append_output(message.agent_name, message, block_type="lifecycle")
+
     def on_agent_completed(self, message: AgentCompleted) -> None:
         """Update the agent tree icon to success or failure."""
         tree = self.query_one("#agent-tree", AgentTree)
@@ -235,10 +241,10 @@ ProgressPanel ProgressBar { margin: 1 0; }
         self._orchestrator = AgentOrchestrator(config=config, app=self)
 
         runners = {
-            "research": ResearchPhaseRunner(self._orchestrator.factory),
-            "explore": ExplorerPhaseRunner(self._orchestrator.factory),
-            "plan": PlannerPhaseRunner(self._orchestrator.factory),
-            "code": CoderPhaseRunner(self._orchestrator.factory),
+            "research": ResearchPhaseRunner(self._orchestrator.factory, self._orchestrator),
+            "explore": ExplorerPhaseRunner(self._orchestrator.factory, self._orchestrator),
+            "plan": PlannerPhaseRunner(self._orchestrator.factory, self._orchestrator),
+            "code": CoderPhaseRunner(self._orchestrator.factory, self._orchestrator),
         }
 
         await self._orchestrator.run_pipeline(task, runners)

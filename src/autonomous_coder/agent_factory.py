@@ -60,6 +60,10 @@ class AgentFactory:
                 "env": {**existing_env, "SERENA_PROJECT": str(self.config.project_path)},
             }
 
+        # can_use_tool requires streaming mode (AsyncIterable prompt).
+        # Only attach it when the role has Bash — other roles don't need it.
+        use_security = security_callback if "Bash" in role_config.tools else None
+
         return ClaudeAgentOptions(
             model=role_config.model,
             system_prompt=system_prompt,
@@ -68,7 +72,7 @@ class AgentFactory:
             max_turns=role_config.max_turns,
             cwd=str(self.config.project_path),
             permission_mode="acceptEdits",
-            can_use_tool=security_callback,
+            can_use_tool=use_security,
             include_partial_messages=True,
             hooks=hooks or {},
         )

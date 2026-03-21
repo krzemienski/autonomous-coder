@@ -1,13 +1,15 @@
 """Research phase runner implementation."""
+from __future__ import annotations
+
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from claude_agent_sdk import query
-from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
-
-from ..agent_factory import AgentFactory
-from ..orchestrator import PhaseContext, PhaseResult, security_callback
+from ..orchestrator import PhaseContext, PhaseResult
 from ..prompts import get_researcher_prompt
+
+if TYPE_CHECKING:
+    from ..agent_factory import AgentFactory
+    from ..orchestrator import AgentOrchestrator
 
 
 class ResearchPhaseRunner:
@@ -17,14 +19,17 @@ class ResearchPhaseRunner:
     libraries, and resources before codebase exploration begins.
     """
 
-    def __init__(self, factory: AgentFactory) -> None:
+    def __init__(self, factory: AgentFactory, orchestrator: AgentOrchestrator | None = None) -> None:
         """Initialize with an agent factory.
 
         Args:
             factory: Factory used to build ``ClaudeAgentOptions`` for the
                 research role.
+            orchestrator: Optional orchestrator for emitting lifecycle messages.
+                When provided, uses ``run_query()`` for full observability.
         """
         self.factory = factory
+        self.orchestrator = orchestrator
 
     async def run(self, context: PhaseContext) -> PhaseResult:
         """Execute the research phase query.
@@ -36,11 +41,54 @@ class ResearchPhaseRunner:
             PhaseResult with ``research_output`` in ``output_data``.
         """
         start_time = time.time()
-        total_cost = 0.0
-        collected_text: list[str] = []
 
         system_prompt = self._build_system_prompt(context)
         prompt = self._build_prompt(context)
+
+        if self.orchestrator is not None:
+            try:
+                text, cost = await self.orchestrator.run_query(
+                    role="research",
+                    phase=context.phase_name,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    budget_remaining=context.budget_remaining,
+                )
+                return PhaseResult(
+                    phase_name=context.phase_name,
+                    output_data={"research_output": text},
+                    cost_incurred=cost,
+                    duration_seconds=time.time() - start_time,
+                    success=True,
+                )
+            except Exception as e:
+                return PhaseResult(
+                    phase_name=context.phase_name,
+                    output_data={},
+                    cost_incurred=0.0,
+                    duration_seconds=time.time() - start_time,
+                    success=False,
+                    error=str(e),
+                )
+
+        # Fallback: no orchestrator — direct query (no observability)
+        return await self._run_direct(context, prompt, system_prompt, start_time)
+
+    async def _run_direct(
+        self,
+        context: PhaseContext,
+        prompt: str,
+        system_prompt: str,
+        start_time: float,
+    ) -> PhaseResult:
+        """Direct query fallback when no orchestrator is attached."""
+        from claude_agent_sdk import query
+        from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock
+
+        from ..orchestrator import security_callback
+
+        total_cost = 0.0
+        collected_text: list[str] = []
 
         options = self.factory.create_options(
             role="research",
