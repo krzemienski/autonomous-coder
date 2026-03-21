@@ -10,12 +10,30 @@ from ..prompts import get_explorer_prompt
 
 
 class ExplorerPhaseRunner:
-    """Runs the explore phase: codebase structure analysis."""
+    """Runs the explore phase: codebase structure analysis.
+
+    Uses Serena MCP to analyze project layout, detect technology stack,
+    and map relevant symbols.
+    """
 
     def __init__(self, factory: AgentFactory) -> None:
+        """Initialize with an agent factory.
+
+        Args:
+            factory: Factory used to build ``ClaudeAgentOptions`` for the
+                explore role.
+        """
         self.factory = factory
 
     async def run(self, context: PhaseContext) -> PhaseResult:
+        """Execute the exploration phase query.
+
+        Args:
+            context: Phase input including task description and prior research.
+
+        Returns:
+            PhaseResult with ``explore_output`` in ``output_data``.
+        """
         start_time = time.time()
         total_cost = 0.0
         collected_text: list[str] = []
@@ -58,6 +76,7 @@ class ExplorerPhaseRunner:
             )
 
     def _build_system_prompt(self, context: PhaseContext) -> str:
+        """Build the system prompt, injecting prior research as additional context."""
         research_output = context.input_data.get("research_output", "")
         return get_explorer_prompt(
             task=context.task_description,
@@ -66,6 +85,7 @@ class ExplorerPhaseRunner:
         )
 
     def _build_prompt(self, context: PhaseContext) -> str:
+        """Build the user-turn prompt for the exploration query."""
         task = context.input_data.get("task", context.task_description)
         research = context.input_data.get("research_output", "")
         parts = [f"Task: {task}", "", "Explore the codebase and produce a structured JSON report."]

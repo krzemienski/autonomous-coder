@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.egg-info/
+src/*.egg-info/
 dist/
 build/
 *.egg

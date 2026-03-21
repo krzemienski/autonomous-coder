@@ -6,6 +6,7 @@ class AgentTabs(TabbedContent):
     """Dynamic tabbed view — one tab per agent, added on AgentStarted."""
 
     def __init__(self, **kwargs) -> None:
+        """Initialize with an empty agent-to-log mapping."""
         super().__init__(**kwargs)
         self._agent_logs: dict[str, RichLog] = {}
 

@@ -28,23 +28,28 @@ class ProgressPanel(Widget):
     """
 
     def compose(self) -> ComposeResult:
+        """Lay out the phase label, progress bar, and task list."""
         yield Static("Phase: idle", id="phase-label")
         yield ProgressBar(total=4, show_eta=False, id="phase-bar")
         yield Static("", id="task-list")
 
     def watch_current_phase(self, phase: str) -> None:
+        """Update the phase label when the current phase changes."""
         label = self.query_one("#phase-label", Static)
         label.update(f"Phase: [bold]{phase}[/bold]")
 
     def watch_phase_index(self, index: int) -> None:
+        """Advance the progress bar to match the current phase index."""
         bar = self.query_one("#phase-bar", ProgressBar)
         bar.advance(index - bar.progress if index > 0 else 0)
 
     def watch_total_phases(self, total: int) -> None:
+        """Update the progress bar total when the phase count changes."""
         bar = self.query_one("#phase-bar", ProgressBar)
         bar.total = total
 
     def watch_tasks(self, tasks: list) -> None:
+        """Re-render the task list with status icons."""
         lines = []
         for task in tasks:
             status = task.get("status", "pending")
@@ -60,10 +65,22 @@ class ProgressPanel(Widget):
         task_list.update("\n".join(lines) if lines else "No tasks")
 
     def set_phase(self, phase: str, index: int, total: int) -> None:
+        """Update all phase-related reactive properties at once.
+
+        Args:
+            phase: Display name of the current phase.
+            index: Zero-based phase position.
+            total: Total number of phases.
+        """
         self.total_phases = total
         self.current_phase = phase
         self.phase_index = index
 
     def update_tasks(self, tasks: list[dict]) -> None:
-        """tasks: list of {"name": str, "status": "pending"|"running"|"complete"}"""
+        """Replace the displayed task list.
+
+        Args:
+            tasks: List of dicts with "name" and "status" keys.
+                Status values: "pending", "running", or "complete".
+        """
         self.tasks = tasks

@@ -37,6 +37,7 @@ from .security import (
 
 # TUI components
 from .app import AutonomousCoderApp
+from .cli_adapter import CliAdapter
 from .config import OrchestratorConfig, RoleConfig, MCP_SERVERS
 from .orchestrator import AgentOrchestrator, PhaseContext, PhaseResult, PhaseRunner, security_callback
 from .agent_factory import AgentFactory
@@ -56,6 +57,8 @@ __author__ = "Claude Code Skills Factory"
 __all__ = [
     # TUI entry point
     "AutonomousCoderApp",
+    # CLI mode
+    "CliAdapter",
     # Orchestration
     "AgentOrchestrator",
     "AgentFactory",

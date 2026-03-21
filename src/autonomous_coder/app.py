@@ -33,7 +33,12 @@ from .widgets import (
 
 
 class AutonomousCoderApp(App):
-    """Top-level TUI application."""
+    """Top-level TUI application.
+
+    Composes a sidebar (agent tree + progress), a main area (tabbed agent
+    output + task detail + cost display), and a task input bar. Orchestrates
+    the Research -> Explore -> Plan -> Code pipeline via ``AgentOrchestrator``.
+    """
 
     CSS = """
 Screen { layout: vertical; }
@@ -77,6 +82,13 @@ ProgressPanel ProgressBar { margin: 1 0; }
         project_path: str | Path | None = None,
         **kwargs: Any,
     ) -> None:
+        """Initialize the TUI application.
+
+        Args:
+            task: Optional task description to auto-start on launch.
+            project_path: Working directory for the orchestrator.
+            **kwargs: Additional arguments forwarded to ``App.__init__``.
+        """
         super().__init__(**kwargs)
         self._task = task
         self.project_path = Path(project_path) if project_path else Path.cwd()
@@ -87,6 +99,7 @@ ProgressPanel ProgressBar { margin: 1 0; }
     # ------------------------------------------------------------------
 
     def compose(self) -> ComposeResult:
+        """Build the widget layout: header, input bar, sidebar + main area, footer."""
         yield Header()
         yield Input(placeholder="Enter a task and press Enter...", id="task-input")
         with Horizontal(id="content"):
@@ -124,6 +137,7 @@ ProgressPanel ProgressBar { margin: 1 0; }
     # ------------------------------------------------------------------
 
     def on_agent_started(self, message: AgentStarted) -> None:
+        """Register a new agent in the tree and open a tab for its output."""
         tree = self.query_one("#agent-tree", AgentTree)
         tree.add_agent(message.agent_name, message.phase)
         tree.set_agent_running(message.agent_name)
@@ -133,14 +147,17 @@ ProgressPanel ProgressBar { margin: 1 0; }
         tabs.focus_agent(message.agent_name)
 
     def on_agent_output(self, message: AgentOutput) -> None:
+        """Append streamed text to the agent's tab."""
         tabs = self.query_one("#agent-tabs", AgentTabs)
         tabs.append_output(message.agent_name, message.text, message.block_type)
 
     def on_agent_completed(self, message: AgentCompleted) -> None:
+        """Update the agent tree icon to success or failure."""
         tree = self.query_one("#agent-tree", AgentTree)
         tree.set_agent_complete(message.agent_name, message.success)
 
     def on_agent_error(self, message: AgentError) -> None:
+        """Mark the agent as failed and display the error in its tab."""
         tree = self.query_one("#agent-tree", AgentTree)
         tree.set_agent_complete(message.agent_name, success=False)
 
@@ -148,21 +165,25 @@ ProgressPanel ProgressBar { margin: 1 0; }
         tabs.append_output(message.agent_name, message.error, block_type="error")
 
     def on_cost_update(self, message: CostUpdate) -> None:
+        """Refresh the cost display widget with latest totals."""
         self.total_cost = message.total_cost
         cost_display = self.query_one("#cost-display", CostDisplay)
         cost_display.record_cost(message.agent_name, message.cost, message.total_cost)
 
     def on_security_block(self, message: SecurityBlock) -> None:
+        """Display a security-blocked tool call as an error in the agent's tab."""
         tabs = self.query_one("#agent-tabs", AgentTabs)
         text = f"BLOCKED tool '{message.tool_name}': {message.reason}"
         tabs.append_output(message.agent_name, text, block_type="error")
 
     def on_phase_started(self, message: PhaseStarted) -> None:
+        """Update the progress panel when a new phase begins."""
         self.current_phase = message.phase
         progress = self.query_one("#progress", ProgressPanel)
         progress.set_phase(message.phase, message.phase_index, message.total_phases)
 
     def on_phase_completed(self, message: PhaseCompleted) -> None:
+        """Mark the completed phase in the progress panel."""
         progress = self.query_one("#progress", ProgressPanel)
         progress.set_phase(
             f"{message.phase} (done)",
@@ -175,6 +196,7 @@ ProgressPanel ProgressBar { margin: 1 0; }
     # ------------------------------------------------------------------
 
     def action_pause(self) -> None:
+        """Pause the pipeline between phases."""
         if self._orchestrator:
             self._orchestrator.pause()
             self.notify("Pipeline paused. Press 'r' to resume.")
@@ -182,6 +204,7 @@ ProgressPanel ProgressBar { margin: 1 0; }
             self.notify("No pipeline running.", severity="warning")
 
     def action_resume(self) -> None:
+        """Resume a paused pipeline."""
         if self._orchestrator:
             self._orchestrator.resume()
             self.notify("Pipeline resumed.")
@@ -189,6 +212,7 @@ ProgressPanel ProgressBar { margin: 1 0; }
             self.notify("No pipeline running.", severity="warning")
 
     def action_cancel_agent(self) -> None:
+        """Cancel the running pipeline."""
         if self._orchestrator:
             self._orchestrator.cancel()
             self.notify("Pipeline cancelled.", severity="warning")
@@ -196,6 +220,7 @@ ProgressPanel ProgressBar { margin: 1 0; }
             self.notify("No pipeline running.", severity="warning")
 
     def action_cycle_agents(self) -> None:
+        """Switch to the next agent output tab."""
         tabs = self.query_one("#agent-tabs", AgentTabs)
         tabs.action_next_tab()
 

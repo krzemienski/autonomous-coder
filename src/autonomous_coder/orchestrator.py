@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
-from claude_agent_sdk import ClaudeAgentOptions, PermissionResultAllow, PermissionResultDeny, query
+from claude_agent_sdk import PermissionResultAllow, PermissionResultDeny, query
 from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
 
 from .agent_factory import AgentFactory
@@ -20,7 +20,6 @@ from .messages import (
     CostUpdate,
     PhaseCompleted,
     PhaseStarted,
-    SecurityBlock,
 )
 from .security import is_command_allowed
 
@@ -62,7 +61,16 @@ class PhaseResult:
 class PhaseRunner(Protocol):
     """Structural protocol — any object with an async run() satisfies it."""
 
-    async def run(self, context: PhaseContext) -> PhaseResult: ...
+    async def run(self, context: PhaseContext) -> PhaseResult:
+        """Execute the phase logic and return results.
+
+        Args:
+            context: Input context for this phase.
+
+        Returns:
+            PhaseResult with output data and cost metrics.
+        """
+        ...
 
 
 # ---------------------------------------------------------------------------

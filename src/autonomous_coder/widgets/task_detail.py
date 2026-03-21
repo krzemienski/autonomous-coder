@@ -26,25 +26,32 @@ class TaskDetail(Widget):
     """
 
     def compose(self) -> ComposeResult:
+        """Lay out the title and body statics."""
         yield Static("Task Detail", id="task-title")
         yield Static("", id="task-body")
 
     def watch_task_name(self, _: str) -> None:
+        """Refresh the body when the task name changes."""
         self._refresh_body()
 
     def watch_task_status(self, _: str) -> None:
+        """Refresh the body when the task status changes."""
         self._refresh_body()
 
     def watch_task_files(self, _: list) -> None:
+        """Refresh the body when the file list changes."""
         self._refresh_body()
 
     def watch_task_dependencies(self, _: list) -> None:
+        """Refresh the body when the dependency list changes."""
         self._refresh_body()
 
     def watch_estimated_cost(self, _: float) -> None:
+        """Refresh the body when the estimated cost changes."""
         self._refresh_body()
 
     def _refresh_body(self) -> None:
+        """Rebuild and update the task detail body text."""
         name = self.task_name or "—"
         status = self.task_status or "idle"
         files = ", ".join(self.task_files) if self.task_files else "—"
@@ -69,6 +76,15 @@ class TaskDetail(Widget):
         dependencies: list[str] | None = None,
         estimated_cost: float = 0.0,
     ) -> None:
+        """Set all task detail fields at once.
+
+        Args:
+            name: Display name of the task.
+            status: Current status string (e.g. "running", "complete").
+            files: Files involved in this task.
+            dependencies: Task IDs this task depends on.
+            estimated_cost: Projected cost in USD.
+        """
         self.task_name = name
         self.task_status = status
         self.task_files = files or []

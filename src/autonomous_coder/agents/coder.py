@@ -10,12 +10,32 @@ from ..prompts import get_coder_prompt
 
 
 class CoderPhaseRunner:
-    """Runs the code phase followed by a separate reviewer query."""
+    """Runs the code phase followed by a separate reviewer query.
+
+    The coding pass implements the task using the full tool set, then a
+    lightweight reviewer query provides feedback on correctness, style,
+    and security.
+    """
 
     def __init__(self, factory: AgentFactory) -> None:
+        """Initialize with an agent factory.
+
+        Args:
+            factory: Factory used to build ``ClaudeAgentOptions`` for the
+                code and reviewer roles.
+        """
         self.factory = factory
 
     async def run(self, context: PhaseContext) -> PhaseResult:
+        """Execute coding and review passes sequentially.
+
+        Args:
+            context: Phase input including task description and plan output.
+
+        Returns:
+            PhaseResult with ``code_output`` and ``review_output`` in
+            ``output_data``.
+        """
         start_time = time.time()
         total_cost = 0.0
 
@@ -43,6 +63,14 @@ class CoderPhaseRunner:
         )
 
     async def _run_coding(self, context: PhaseContext) -> tuple[str, float]:
+        """Run the implementation coding pass.
+
+        Args:
+            context: Phase context with task and plan data.
+
+        Returns:
+            Tuple of (collected_text, cost_incurred).
+        """
         plan_output = context.input_data.get("plan_output", "")
         task_description = context.task_description
 

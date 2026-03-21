@@ -3,13 +3,26 @@ import json
 import sqlite3
 import time
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
 
 
 @dataclass
 class ConversationEntry:
+    """A single conversation turn stored in the database.
+
+    Attributes:
+        session_id: Parent session identifier.
+        agent_name: Name of the agent that produced this entry.
+        phase: Pipeline phase (e.g. "research", "code").
+        role: Message role -- "user", "assistant", or "tool".
+        content: Raw text content of the message.
+        block_type: Content block kind -- "text", "tool_use", or "tool_result".
+        cost: Incremental cost in USD for this turn.
+        timestamp: Unix epoch seconds; auto-filled when zero.
+    """
+
     session_id: str
     agent_name: str
     phase: str
@@ -24,11 +37,17 @@ class MemoryStore:
     """SQLite-backed persistence for agent sessions."""
 
     def __init__(self, db_path: Path | str) -> None:
+        """Initialize the memory store, creating the database file if needed.
+
+        Args:
+            db_path: Filesystem path for the SQLite database.
+        """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     def _init_db(self) -> None:
+        """Create tables, indexes, FTS triggers, and enable WAL mode."""
         with self._connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA foreign_keys=ON")
@@ -107,6 +126,7 @@ class MemoryStore:
 
     @contextmanager
     def _connect(self) -> Generator[sqlite3.Connection, None, None]:
+        """Yield an auto-committing SQLite connection; rolls back on error."""
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         try:
@@ -123,6 +143,12 @@ class MemoryStore:
     # ------------------------------------------------------------------
 
     def create_session(self, session_id: str, task: str) -> None:
+        """Insert a new session row.
+
+        Args:
+            session_id: Unique session identifier.
+            task: Natural-language task description.
+        """
         now = time.time()
         with self._connect() as conn:
             conn.execute(
@@ -132,6 +158,12 @@ class MemoryStore:
             )
 
     def update_session(self, session_id: str, **kwargs: Any) -> None:
+        """Update arbitrary session columns.
+
+        Args:
+            session_id: Session to update.
+            **kwargs: Column-name / value pairs to set.
+        """
         if not kwargs:
             return
         kwargs["updated_at"] = time.time()
@@ -141,6 +173,14 @@ class MemoryStore:
             conn.execute(f"UPDATE sessions SET {cols} WHERE id = ?", vals)  # noqa: S608
 
     def get_session(self, session_id: str) -> dict | None:
+        """Fetch a single session by ID.
+
+        Args:
+            session_id: Session identifier.
+
+        Returns:
+            Session dict with parsed metadata, or None if not found.
+        """
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT * FROM sessions WHERE id = ?", (session_id,)
@@ -152,6 +192,14 @@ class MemoryStore:
         return result
 
     def list_sessions(self, limit: int = 20) -> list[dict]:
+        """Return recent sessions ordered by last update.
+
+        Args:
+            limit: Maximum number of sessions to return.
+
+        Returns:
+            List of session dicts with parsed metadata.
+        """
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM sessions ORDER BY updated_at DESC LIMIT ?", (limit,)
@@ -168,6 +216,14 @@ class MemoryStore:
     # ------------------------------------------------------------------
 
     def add_conversation(self, entry: ConversationEntry) -> int:
+        """Persist a conversation entry and update the FTS index.
+
+        Args:
+            entry: The conversation entry to store.
+
+        Returns:
+            The auto-incremented row ID of the inserted record.
+        """
         if entry.timestamp == 0.0:
             entry.timestamp = time.time()
         with self._connect() as conn:
@@ -194,6 +250,16 @@ class MemoryStore:
         agent_name: str | None = None,
         limit: int = 100,
     ) -> list[dict]:
+        """Retrieve conversation entries for a session.
+
+        Args:
+            session_id: Parent session identifier.
+            agent_name: Optional filter to a single agent.
+            limit: Maximum rows to return.
+
+        Returns:
+            Conversation dicts ordered by timestamp ascending.
+        """
         with self._connect() as conn:
             if agent_name is not None:
                 rows = conn.execute(
@@ -216,6 +282,15 @@ class MemoryStore:
         query: str,
         session_id: str | None = None,
     ) -> list[dict]:
+        """Full-text search across conversation content.
+
+        Args:
+            query: FTS5 match expression.
+            session_id: Optional session scope.
+
+        Returns:
+            Matching conversation dicts ranked by relevance.
+        """
         with self._connect() as conn:
             if session_id is not None:
                 rows = conn.execute(
@@ -248,6 +323,15 @@ class MemoryStore:
         cost: float,
         cumulative: float,
     ) -> None:
+        """Record an incremental cost event and update the session total.
+
+        Args:
+            session_id: Parent session identifier.
+            agent_name: Agent that incurred the cost.
+            phase: Pipeline phase name.
+            cost: Incremental cost in USD.
+            cumulative: Running total cost for the session.
+        """
         with self._connect() as conn:
             conn.execute(
                 """INSERT INTO cost_tracking
@@ -261,6 +345,14 @@ class MemoryStore:
             )
 
     def get_session_cost(self, session_id: str) -> float:
+        """Return the total cost in USD for a session.
+
+        Args:
+            session_id: Session identifier.
+
+        Returns:
+            Cumulative cost, or 0.0 if session not found.
+        """
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT total_cost FROM sessions WHERE id = ?", (session_id,)
@@ -268,6 +360,14 @@ class MemoryStore:
         return float(row["total_cost"]) if row else 0.0
 
     def get_cost_breakdown(self, session_id: str) -> dict[str, float]:
+        """Return per-agent cost totals for a session.
+
+        Args:
+            session_id: Session identifier.
+
+        Returns:
+            Mapping of agent_name to total cost in USD.
+        """
         with self._connect() as conn:
             rows = conn.execute(
                 """SELECT agent_name, SUM(cost) AS agent_total

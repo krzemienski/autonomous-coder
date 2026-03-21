@@ -17,6 +17,11 @@ class AgentFactory:
     """
 
     def __init__(self, config: OrchestratorConfig) -> None:
+        """Initialize the factory with orchestrator configuration.
+
+        Args:
+            config: Configuration containing role definitions and project path.
+        """
         self.config = config
 
     def create_options(

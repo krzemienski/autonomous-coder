@@ -1,17 +1,21 @@
 # Autonomous Coder
 
-A TUI-based multi-agent orchestration system for autonomous coding, built on the Claude Agent SDK (Python).
+A multi-agent orchestration system for autonomous coding, built on the Claude Agent SDK (Python). Supports both a real-time TUI dashboard and headless CLI mode.
 
 ## What It Does
 
-Launches a real-time terminal dashboard that orchestrates multiple Claude agents through a four-phase pipeline:
+Orchestrates multiple Claude agents through a four-phase pipeline:
 
 1. **Research** — Discovers relevant tools, libraries, and patterns via web research
 2. **Explore** — Analyzes your codebase semantically using Serena MCP
 3. **Plan** — Creates a detailed, dependency-aware implementation plan
 4. **Code** — Implements tasks iteratively with live streaming output and code review
 
-Each agent runs as a separate `query()` call with its own model, tools, budget limit, and security constraints — all visible in real-time through the TUI.
+Each agent runs as a separate `query()` call with its own model, tools, budget limit, and security constraints.
+
+### Two Execution Modes
+
+**TUI Mode** (default) — Full Textual dashboard with live agent streaming, progress bars, and cost tracking:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -33,23 +37,45 @@ Each agent runs as a separate `query()` call with its own model, tools, budget l
 └────────────────┴────────────────────────────────────────────────────┘
 ```
 
+**CLI Mode** (`--cli`) — Headless pipeline output printed to stdout. Same orchestrator, no TUI dependency at runtime.
+
 ## Quick Start
 
 ```bash
-# Install dependencies
-pip install claude-agent-sdk textual
+# Install (editable for development)
+pip install -e .
 
-# Run with a task
-python -m autonomous_coder "Add user authentication with JWT tokens"
+# TUI mode (default) — full dashboard with live streaming
+autonomous-coder "Add user authentication with JWT tokens"
 
-# Or launch the TUI without a task
-python -m autonomous_coder
+# TUI mode — launch without a task, enter it in the input bar
+autonomous-coder
+
+# CLI mode (headless) — pipeline output printed to stdout
+autonomous-coder --cli "Add user authentication with JWT tokens"
+
+# CLI mode with verbose agent output
+autonomous-coder --cli -v "Add auth" --project /path/to/project
 ```
 
-### Keyboard Shortcuts
+### CLI Options
+
+```
+autonomous-coder [-h] [--cli] [--verbose] [--project PROJECT] [task ...]
+
+positional arguments:
+  task               Task description (joins multiple words)
+
+options:
+  --cli              Run in headless CLI mode (no TUI)
+  --verbose, -v      Show full agent text output (CLI mode only)
+  --project PROJECT  Project directory (defaults to cwd)
+```
+
+### Keyboard Shortcuts (TUI mode)
 
 | Key | Action |
-|-----|--------|
+| --- | ------ |
 | `q` | Quit |
 | `p` | Pause pipeline |
 | `r` | Resume pipeline |
@@ -61,62 +87,46 @@ python -m autonomous_coder
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    TUI LAYER (Textual v7.0.0)                    │
-│  AgentTree │ AgentTabs │ ProgressPanel │ CostDisplay │ TaskDetail│
+│                    TUI LAYER (Textual)                            │
+│  AgentTree │ AgentTabs │ ProgressPanel │ CostDisplay │ TaskDetail │
+├──────────────────────────────────────────────────────────────────┤
+│              CLI LAYER (CliAdapter — headless alternative)        │
+│  post_message() → stdout printing │ Same orchestrator interface   │
 ├──────────────────────────────────────────────────────────────────┤
 │                    ORCHESTRATION LAYER                            │
 │  AgentOrchestrator │ PhaseRunners (R→E→P→C) │ AgentFactory       │
 ├──────────────────────────────────────────────────────────────────┤
-│                SDK LAYER (claude-agent-sdk v0.1.49)               │
-│  query() │ ClaudeSDKClient │ ClaudeAgentOptions │ AgentDefinition │
-│  can_use_tool │ max_budget_usd │ StreamEvent │ ResultMessage      │
+│                SDK LAYER (claude-agent-sdk)                       │
+│  query() │ ClaudeAgentOptions │ can_use_tool │ ResultMessage      │
 ├──────────────────────────────────────────────────────────────────┤
-│                    PERSISTENCE LAYER                             │
-│  SQLite + FTS5 + WAL │ Session Management │ Cost Aggregation     │
+│                    PERSISTENCE LAYER                              │
+│  SQLite + FTS5 + WAL │ Session Management │ Cost Aggregation      │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### SDK Capabilities (v0.1.49 — verified via introspection)
-
-| Feature | Field / Class | Status |
-|---------|---------------|--------|
-| One-shot agent queries | `query()` → `AsyncIterator[Message]` | Used |
-| Stateful multi-turn sessions | `ClaudeSDKClient` | Available |
-| Per-role options | `ClaudeAgentOptions` (35 fields) | Used |
-| SDK-enforced budget caps | `max_budget_usd: float` | Available |
-| Programmatic subagents | `agents: dict[str, AgentDefinition]` | Available |
-| Pre-execution security | `can_use_tool` callback | Used |
-| Real-time streaming | `include_partial_messages` → `StreamEvent` | Used |
-| Extended thinking | `thinking: ThinkingConfig` | Available |
-| Effort control | `effort: 'low'\|'medium'\|'high'\|'max'` | Available |
-| Structured output | `output_format: dict` | Available |
-| Model fallback | `fallback_model: str` | Available |
-| File checkpointing | `enable_file_checkpointing: bool` | Available |
-| Session forking | `fork_session: bool` | Available |
-| In-process MCP tools | `create_sdk_mcp_server()`, `@tool` | Available |
-| Sandbox isolation | `sandbox: SandboxSettings` | Available |
-| Session management | `list_sessions()`, `tag_session()` | Available |
+The `AgentOrchestrator` accepts any object with a `post_message()` method as its `app` parameter. The TUI passes `AutonomousCoderApp` (Textual); the CLI passes `CliAdapter` (prints to stdout); passing `None` silently drops messages (headless/programmatic use).
 
 ### Key Design Decisions
 
-- **`ClaudeAgentOptions`** — Uses verified fields from `claude-agent-sdk v0.1.49`. All field names and types confirmed via `inspect.signature()`.
+- **`ClaudeAgentOptions`** — Uses verified fields from `claude-agent-sdk`. All field names and types confirmed via `inspect.signature()`.
 - **`can_use_tool` for security** — Pre-execution Bash command validation via `PermissionResultAllow`/`PermissionResultDeny`. Blocks dangerous commands *before* they run.
 - **Application-level budget tracking** — `ResultMessage.total_cost_usd` accumulated per-agent with configurable limits. The SDK also offers `max_budget_usd` for SDK-enforced caps.
 - **Textual Messages for UI** — Built-in `post_message()` system. 8 message types: `AgentStarted`, `AgentOutput`, `AgentCompleted`, `AgentError`, `CostUpdate`, `SecurityBlock`, `PhaseStarted`, `PhaseCompleted`.
 - **PhaseRunner protocol** — Each phase implements `async def run(context: PhaseContext) -> PhaseResult`. Composable and extensible.
+- **Duck-typed app interface** — `AgentOrchestrator(app=...)` accepts TUI, CLI adapter, or `None`. No coupling to Textual.
 - **Sequential pipeline v1** — Phases run sequentially to avoid file conflicts. Parallel execution deferred to v2.
 
 ## Requirements
 
-- Python 3.12+
-- [claude-agent-sdk](https://pypi.org/project/claude-agent-sdk/) v0.1.49+
-- [Textual](https://pypi.org/project/textual/) v7.0.0+
+- Python 3.10+
+- [claude-agent-sdk](https://pypi.org/project/claude-agent-sdk/) v0.1.40+
+- [Textual](https://pypi.org/project/textual/) v1.0.0+ (TUI mode only)
 - Claude Code CLI installed and authenticated
 
 ### MCP Servers (auto-configured)
 
 | Server | Phase | Purpose |
-|--------|-------|---------|
+| ------ | ----- | ------- |
 | Serena | Explore, Plan, Code | Semantic code analysis |
 | Context7 | Research, Code | Library documentation |
 | Firecrawl | Research | Web research and scraping |
@@ -127,12 +137,12 @@ python -m autonomous_coder
 Default budget allocation ($5.00 total):
 
 | Role | Budget | Model | Max Turns |
-|------|--------|-------|-----------|
-| Research | $0.50 | claude-sonnet-4-5 | 25 |
-| Explore | $0.50 | claude-sonnet-4-5 | 20 |
-| Plan | $1.00 | claude-sonnet-4-5 | 10 |
-| Code | $2.00 | claude-sonnet-4-5 | 30 |
-| Reviewer | $0.25 | claude-sonnet-4-5 | 10 |
+| ---- | ------ | ----- | --------- |
+| Research | $0.50 | claude-opus-4-6 | 25 |
+| Explore | $0.50 | claude-opus-4-6 | 20 |
+| Plan | $1.00 | claude-opus-4-6 | 10 |
+| Code | $2.00 | claude-opus-4-6 | 30 |
+| Reviewer | $0.25 | claude-opus-4-6 | 10 |
 
 Budget is enforced per-role via `ResultMessage.total_cost_usd` accumulation. Exceeding a role's budget stops that agent gracefully. The SDK also supports `max_budget_usd` on `ClaudeAgentOptions` for SDK-level enforcement.
 
@@ -147,8 +157,11 @@ Defense-in-depth with three layers:
 ## File Structure
 
 ```
-autonomous-coder/
-├── app.py                    # Textual App entry point
+src/autonomous_coder/
+├── __init__.py               # Package exports (v2.0)
+├── __main__.py               # Entry point: TUI + CLI dispatch (argparse)
+├── app.py                    # Textual App (TUI mode)
+├── cli_adapter.py            # CliAdapter (headless CLI mode)
 ├── orchestrator.py           # Phase pipeline engine + PhaseRunner protocol
 ├── agent_factory.py          # ClaudeAgentOptions builder per role
 ├── agent_instance.py         # Agent lifecycle + budget tracking
@@ -156,9 +169,8 @@ autonomous-coder/
 ├── config.py                 # Role configs, MCP servers, budget limits
 ├── memory.py                 # SQLite + FTS5 + WAL persistence
 ├── security.py               # Command allowlist + can_use_tool callback
-├── styles.tcss               # TUI CSS styling
-├── __main__.py               # python -m autonomous_coder entry point
-├── __init__.py               # Package exports (v2.0)
+├── prompts.py                # Prompt template loading utilities
+├── styles.tcss               # TUI CSS styling (supplementary)
 ├── widgets/                  # TUI widgets
 │   ├── agent_tree.py         # Agent sidebar with status icons
 │   ├── agent_tabs.py         # Tabbed streaming output per agent
@@ -171,9 +183,7 @@ autonomous-coder/
 │   ├── explorer.py           # ExplorerPhaseRunner
 │   ├── planner.py            # PlannerPhaseRunner
 │   └── coder.py              # CoderPhaseRunner (+ reviewer)
-├── prompts/                  # Phase-specific prompt templates
-├── ai/diagrams/              # DDD architecture diagrams
-│── agent.py                  # Legacy CLI orchestrator
+├── agent.py                  # Legacy CLI orchestrator
 ├── client.py                 # Legacy SDK client
 ├── progress.py               # Legacy progress tracker
 └── researcher.py             # Legacy research phase
@@ -184,29 +194,45 @@ autonomous-coder/
 ```python
 from autonomous_coder import (
     AutonomousCoderApp,
+    CliAdapter,
     AgentOrchestrator,
     OrchestratorConfig,
     AgentFactory,
     MemoryStore,
 )
+from autonomous_coder.agents import (
+    ResearchPhaseRunner, ExplorerPhaseRunner,
+    PlannerPhaseRunner, CoderPhaseRunner,
+)
 
-# Launch TUI
+# TUI mode
 app = AutonomousCoderApp(task="Add auth", project_path="/my/project")
 app.run()
 
-# Or use the orchestrator headlessly (no TUI)
+# CLI mode (headless with stdout output)
+adapter = CliAdapter(verbose=True)
 config = OrchestratorConfig(project_path=Path("/my/project"))
-orchestrator = AgentOrchestrator(config=config)
+orchestrator = AgentOrchestrator(config=config, app=adapter)
+runners = {
+    "research": ResearchPhaseRunner(orchestrator.factory),
+    "explore": ExplorerPhaseRunner(orchestrator.factory),
+    "plan": PlannerPhaseRunner(orchestrator.factory),
+    "code": CoderPhaseRunner(orchestrator.factory),
+}
+results = await orchestrator.run_pipeline("Add auth", runners)
+adapter.print_summary(results)
+
+# Silent mode (no output, just results)
+orchestrator = AgentOrchestrator(config=config, app=None)
 results = await orchestrator.run_pipeline("Add auth", runners)
 ```
 
-## Architecture Diagrams
+## Documentation
 
-See [`ai/diagrams/`](ai/diagrams/README.md) for DDD (Diagram Driven Development) diagrams:
-- [System Architecture Overview](ai/diagrams/architecture/arch-system-overview.md)
-- [Agent Pipeline Journey](ai/diagrams/journeys/sequence-agent-pipeline.md)
-- [Security Pipeline](ai/diagrams/features/feature-security-pipeline.md)
-- [Cost Tracking](ai/diagrams/features/feature-cost-tracking.md)
+- [`docs/architecture.md`](docs/architecture.md) — System architecture, component relationships, Mermaid diagrams, extension guide
+- [`docs/api-reference.md`](docs/api-reference.md) — Full API reference for all public classes and methods
+- [`docs/doc-coverage-audit.md`](docs/doc-coverage-audit.md) — Documentation coverage analysis
+- [`ai/diagrams/`](ai/diagrams/README.md) — DDD architecture diagrams
 
 ## License
 

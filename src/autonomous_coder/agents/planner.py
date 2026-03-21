@@ -10,12 +10,30 @@ from ..prompts import get_planner_prompt
 
 
 class PlannerPhaseRunner:
-    """Runs the plan phase: produces a structured implementation plan."""
+    """Runs the plan phase: produces a structured implementation plan.
+
+    Combines research and exploration outputs to generate a JSON plan
+    with ordered tasks, dependencies, and test criteria.
+    """
 
     def __init__(self, factory: AgentFactory) -> None:
+        """Initialize with an agent factory.
+
+        Args:
+            factory: Factory used to build ``ClaudeAgentOptions`` for the
+                plan role.
+        """
         self.factory = factory
 
     async def run(self, context: PhaseContext) -> PhaseResult:
+        """Execute the planning phase query.
+
+        Args:
+            context: Phase input including task description and prior outputs.
+
+        Returns:
+            PhaseResult with ``plan_output`` in ``output_data``.
+        """
         start_time = time.time()
         total_cost = 0.0
         collected_text: list[str] = []
@@ -58,6 +76,7 @@ class PlannerPhaseRunner:
             )
 
     def _build_system_prompt(self, context: PhaseContext) -> str:
+        """Build the system prompt from the planner template with exploration data."""
         exploration_results = context.input_data.get("explore_output", "")
         return get_planner_prompt(
             task=context.task_description,
@@ -66,6 +85,7 @@ class PlannerPhaseRunner:
         )
 
     def _build_prompt(self, context: PhaseContext) -> str:
+        """Build the user-turn prompt combining research and exploration summaries."""
         task = context.input_data.get("task", context.task_description)
         explore = context.input_data.get("explore_output", "")
         research = context.input_data.get("research_output", "")

@@ -15,12 +15,14 @@ class AgentTree(Tree):
     """Sidebar tree showing agents grouped by pipeline phase."""
 
     def __init__(self, **kwargs) -> None:
+        """Initialize the agent tree with empty phase and agent node mappings."""
         super().__init__("Agents", **kwargs)
         self._phase_nodes: dict[str, TreeNode] = {}
         self._agent_nodes: dict[str, TreeNode] = {}
         self._agent_status: dict[str, str] = {}
 
     def on_mount(self) -> None:
+        """Create top-level phase nodes when the widget is mounted."""
         self.root.expand()
         for phase in PHASES:
             node = self.root.add(phase.capitalize(), expand=True)
@@ -44,6 +46,7 @@ class AgentTree(Tree):
         self._update_agent_icon(agent_name, status)
 
     def _update_agent_icon(self, agent_name: str, status: str) -> None:
+        """Replace the icon prefix on an agent's tree node label."""
         node = self._agent_nodes.get(agent_name)
         if node is None:
             return
