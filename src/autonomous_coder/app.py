@@ -7,7 +7,7 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import Header, Footer
+from textual.widgets import Header, Footer, Input
 from textual.worker import Worker
 
 from .agents import ResearchPhaseRunner, ExplorerPhaseRunner, PlannerPhaseRunner, CoderPhaseRunner
@@ -35,7 +35,29 @@ from .widgets import (
 class AutonomousCoderApp(App):
     """Top-level TUI application."""
 
-    CSS_PATH = "styles.tcss"
+    CSS = """
+Screen { layout: vertical; }
+Header { background: $primary-darken-2; }
+#content { height: 1fr; }
+#task-input { dock: bottom; height: 3; margin: 0 1; border: solid $primary-darken-1; }
+#sidebar { width: 30; height: 100%; border-right: solid $primary-darken-1; }
+#agent-tree { height: 60%; border-bottom: solid $primary-darken-1; }
+#progress { height: 40%; padding: 1; }
+#main { height: 100%; }
+#agent-tabs { height: 70%; }
+#details { height: 30%; border-top: solid $primary-darken-1; }
+#task-detail { width: 1fr; padding: 1; border-right: solid $primary-darken-1; }
+#cost-display { width: 30; padding: 1; text-align: center; }
+CostDisplay .cost-total { text-style: bold; color: $success; }
+CostDisplay .cost-warning { color: $warning; }
+CostDisplay .cost-danger { color: $error; }
+StreamingLog { scrollbar-size: 1 1; }
+ProgressPanel ProgressBar { margin: 1 0; }
+.status-running { color: $primary; }
+.status-complete { color: $success; }
+.status-error { color: $error; }
+.status-pending { color: $text-muted; }
+"""
 
     BINDINGS = [
         ("q", "quit", "Quit"),
@@ -56,7 +78,7 @@ class AutonomousCoderApp(App):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.task = task
+        self._task = task
         self.project_path = Path(project_path) if project_path else Path.cwd()
         self._orchestrator: AgentOrchestrator | None = None
 
@@ -66,7 +88,8 @@ class AutonomousCoderApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Horizontal():
+        yield Input(placeholder="Enter a task and press Enter...", id="task-input")
+        with Horizontal(id="content"):
             with Vertical(id="sidebar"):
                 yield AgentTree(id="agent-tree")
                 yield ProgressPanel(id="progress")
@@ -76,6 +99,25 @@ class AutonomousCoderApp(App):
                     yield TaskDetail(id="task-detail")
                     yield CostDisplay(id="cost-display")
         yield Footer()
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def on_ready(self) -> None:
+        """Auto-start pipeline if a task was passed via CLI. Fires after all widgets mount."""
+        if self._task:
+            task_input = self.query_one("#task-input", Input)
+            task_input.display = False
+            self.run_worker(self.run_task(self._task), name="pipeline", exclusive=True)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle task submission from the TUI input widget."""
+        task = event.value.strip()
+        if not task:
+            return
+        event.input.display = False
+        self.run_worker(self.run_task(task), name="pipeline", exclusive=True)
 
     # ------------------------------------------------------------------
     # Message handlers
@@ -162,8 +204,8 @@ class AutonomousCoderApp(App):
     # ------------------------------------------------------------------
 
     async def run_task(self, task: str) -> None:
-        """Launch the full orchestration pipeline as a background worker."""
-        self.task = task
+        """Execute the full orchestration pipeline."""
+        self._task = task
         config = OrchestratorConfig(project_path=self.project_path)
         self._orchestrator = AgentOrchestrator(config=config, app=self)
 
@@ -174,11 +216,7 @@ class AutonomousCoderApp(App):
             "code": CoderPhaseRunner(self._orchestrator.factory),
         }
 
-        self.run_worker(
-            self._orchestrator.run_pipeline(task, runners),
-            name="pipeline",
-            exclusive=True,
-        )
+        await self._orchestrator.run_pipeline(task, runners)
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
         """Handle pipeline worker completion."""

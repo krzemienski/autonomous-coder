@@ -11,14 +11,6 @@ def main() -> None:
     project_path = Path.cwd()
 
     app = AutonomousCoderApp(task=task, project_path=project_path)
-
-    # If a task was supplied, schedule it to run after the TUI mounts
-    if task:
-        async def _on_mount() -> None:
-            await app.run_task(task)
-
-        app.call_after_refresh(lambda: app.run_worker(_on_mount(), name="startup"))
-
     app.run()
 
 

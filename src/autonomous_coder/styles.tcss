@@ -8,6 +8,17 @@ Header {
     background: $primary-darken-2;
 }
 
+#content {
+    height: 1fr;
+}
+
+#task-input {
+    dock: bottom;
+    height: 3;
+    margin: 0 1;
+    border: solid $primary-darken-1;
+}
+
 Footer {
 }
 
