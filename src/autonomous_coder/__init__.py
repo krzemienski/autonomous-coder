@@ -1,43 +1,33 @@
 """
-Autonomous Coder - AI-powered autonomous coding skill with TUI dashboard.
+Autonomous Coder - AI-powered autonomous coding agent with Claude Agent SDK.
 
-Two execution modes:
-  1. TUI Mode: python -m autonomous_coder ["task description"]
-  2. Legacy CLI: python -c "from autonomous_coder import main; main()"
+v2.0: SDK-native mode with subagents, hooks, and single-query orchestration.
+
+Execution modes:
+  1. SDK CLI (default): autonomous-coder task_spec.txt --project /path
+  2. TUI Mode: autonomous-coder --tui "task description"
+  3. Legacy CLI: autonomous-coder --legacy-cli "task description"
+  4. Python API: from autonomous_coder import sdk_run; asyncio.run(sdk_run(config))
 
 Architecture:
-  - Four-phase pipeline: Research → Explore → Plan → Code
-  - PhaseRunner protocol for extensible phase implementations
-  - Textual TUI with live agent streaming, cost tracking, progress display
-  - SQLite + FTS5 persistence for sessions and conversations
-  - can_use_tool security callback (defense-in-depth)
+  - Single SDK query() drives the entire multi-phase workflow
+  - AgentDefinition subagents for researcher, implementer, validator, planner
+  - HookMatcher hooks for observability and safety (outside context window)
+  - Custom MCP tools for phase tracking and findings persistence
+  - Built-in cost ceiling, session resume, and automatic context compaction
 """
 
-# Legacy API (preserved for backward compatibility)
-from .agent import AutonomousCoderAgent, main, run_autonomous_coder
-from .client import AutonomousCoderClient, create_client
-from .progress import ProgressTracker, create_feature_list, update_feature_status
-from .prompts import (
-    ensure_prompt_templates_exist,
-    get_coder_prompt,
-    get_explorer_prompt,
-    get_planner_prompt,
-    get_researcher_prompt,
-    get_system_prompt,
-)
-from .researcher import ResearchPhase, run_research_phase
-from .security import (
-    ALLOWED_COMMANDS,
-    DANGEROUS_PATTERNS,
-    bash_security_hook,
-    get_sandbox_settings,
-    get_security_permissions,
-    is_command_allowed,
-)
+# SDK-native API (v2.0)
+from .types import AutonomousCoderConfig, PhaseEvent, SessionResult
+from .sdk_orchestrator import run as sdk_run
+from .sdk_agents import build_agent_definitions
+from .sdk_hooks import build_hooks
+from .sdk_tools import build_custom_tools_server
+from .sdk_mcp_servers import build_mcp_server_configs
+from .sdk_prompts import build_orchestrator_prompt
+from .display import Display
 
-# TUI components
-from .app import AutonomousCoderApp
-from .cli_adapter import CliAdapter
+# Legacy API (v1.x — preserved for backward compatibility)
 from .config import OrchestratorConfig, RoleConfig, MCP_SERVERS
 from .orchestrator import AgentOrchestrator, PhaseContext, PhaseResult, PhaseRunner, security_callback
 from .agent_factory import AgentFactory
@@ -47,19 +37,52 @@ from .messages import (
     AgentStarted, AgentOutput, AgentCompleted, AgentError,
     CostUpdate, SecurityBlock, PhaseStarted, PhaseCompleted,
 )
-
-# Phase runners
 from .agents import ResearchPhaseRunner, ExplorerPhaseRunner, PlannerPhaseRunner, CoderPhaseRunner
+from .cli_adapter import CliAdapter
+from .security import (
+    ALLOWED_COMMANDS,
+    DANGEROUS_PATTERNS,
+    bash_security_hook,
+    is_command_allowed,
+    get_security_permissions,
+    get_sandbox_settings,
+)
+from .prompts import (
+    ensure_prompt_templates_exist,
+    get_coder_prompt,
+    get_explorer_prompt,
+    get_planner_prompt,
+    get_researcher_prompt,
+    get_system_prompt,
+)
+
+# Legacy imports (may fail if legacy modules removed — that's OK)
+try:
+    from .agent import AutonomousCoderAgent, main as legacy_main, run_autonomous_coder
+    from .client import AutonomousCoderClient, create_client
+    from .progress import ProgressTracker, create_feature_list, update_feature_status
+    from .researcher import ResearchPhase, run_research_phase
+except ImportError:
+    pass
 
 __version__ = "2.0.0"
 __author__ = "Claude Code Skills Factory"
 
 __all__ = [
-    # TUI entry point
+    # SDK-native API (v2.0)
+    "AutonomousCoderConfig",
+    "PhaseEvent",
+    "SessionResult",
+    "sdk_run",
+    "build_agent_definitions",
+    "build_hooks",
+    "build_custom_tools_server",
+    "build_mcp_server_configs",
+    "build_orchestrator_prompt",
+    "Display",
+    # Legacy API
     "AutonomousCoderApp",
-    # CLI mode
     "CliAdapter",
-    # Orchestration
     "AgentOrchestrator",
     "AgentFactory",
     "AgentInstance",
@@ -71,14 +94,11 @@ __all__ = [
     "RoleConfig",
     "MCP_SERVERS",
     "security_callback",
-    # Phase runners
     "ResearchPhaseRunner",
     "ExplorerPhaseRunner",
     "PlannerPhaseRunner",
     "CoderPhaseRunner",
-    # Persistence
     "MemoryStore",
-    # Messages
     "AgentStarted",
     "AgentOutput",
     "AgentCompleted",
@@ -87,23 +107,6 @@ __all__ = [
     "SecurityBlock",
     "PhaseStarted",
     "PhaseCompleted",
-    # Legacy API
-    "run_autonomous_coder",
-    "main",
-    "AutonomousCoderAgent",
-    "AutonomousCoderClient",
-    "create_client",
-    "ProgressTracker",
-    "create_feature_list",
-    "update_feature_status",
-    "get_researcher_prompt",
-    "get_explorer_prompt",
-    "get_planner_prompt",
-    "get_coder_prompt",
-    "get_system_prompt",
-    "ensure_prompt_templates_exist",
-    "ResearchPhase",
-    "run_research_phase",
     "ALLOWED_COMMANDS",
     "DANGEROUS_PATTERNS",
     "bash_security_hook",

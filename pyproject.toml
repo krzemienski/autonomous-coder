@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "autonomous-coder"
 version = "2.0.0"
-description = "AI-powered autonomous coding assistant with TUI dashboard"
+description = "Autonomous multi-phase coding agent built on Claude Agent SDK"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 autonomous-coder = "autonomous_coder.__main__:main"
+autonomous-coder-sdk = "autonomous_coder.sdk_cli:sdk_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/autonomous_coder"]
