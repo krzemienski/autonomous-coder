@@ -15,6 +15,7 @@ Architecture comparison:
 from __future__ import annotations
 
 import time
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
@@ -105,8 +106,8 @@ async def run(config: AutonomousCoderConfig) -> SessionResult:
         include_partial_messages=True,
     )
 
-    # Build the prompt
-    prompt = (
+    # Build the prompt text
+    prompt_text = (
         f"Execute the following task specification against the project at {config.project_dir}.\n\n"
         f"## Task Specification\n{task_spec}\n\n"
         "## Instructions\n"
@@ -122,8 +123,12 @@ async def run(config: AutonomousCoderConfig) -> SessionResult:
     # Run the single SDK query — this drives the entire workflow
     session_result = SessionResult()
 
+    # Custom MCP tools require an async generator prompt (not a plain string)
+    # when used with query(). See SDK docs: "Custom tools require streaming input mode".
+    prompt_arg = _string_to_stream(prompt_text)
+
     try:
-        async for message in query(prompt=prompt, options=options):
+        async for message in query(prompt=prompt_arg, options=options):
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, TextBlock) and block.text:
@@ -168,3 +173,18 @@ async def run(config: AutonomousCoderConfig) -> SessionResult:
 
     display.result(session_result)
     return session_result
+
+
+async def _string_to_stream(prompt: str) -> AsyncIterator[dict[str, Any]]:
+    """Wrap a plain string prompt as an AsyncIterator for streaming mode.
+
+    The SDK requires an AsyncIterable prompt when custom MCP tools are
+    registered (they need streaming input mode). This yields a single
+    user message then returns.
+    """
+    yield {
+        "type": "user",
+        "message": {"role": "user", "content": prompt},
+        "parent_tool_use_id": None,
+        "session_id": "",
+    }
