@@ -1,7 +1,7 @@
 # Agent Pipeline — User Journey
 
 **Type:** Sequence Diagram
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-20
 **Related Files:**
 - `orchestrator.py` — Pipeline execution
 - `agents/research.py`, `agents/explorer.py`, `agents/planner.py`, `agents/coder.py`
@@ -86,10 +86,12 @@ sequenceDiagram
 
 - **User sees progress immediately** — TUI renders before any agent starts, showing the empty dashboard layout
 - **Each phase chains data forward** — Research output feeds Explorer, Explorer feeds Planner, Planner feeds Coder
-- **Budget is enforced per-role** — If research exceeds $0.50, that agent stops but the pipeline continues
-- **Reviewer is a separate query()** — NOT a subagent parameter; appears as its own tab in the TUI
-- **All conversations persisted** — SQLite stores every message for session resume
+- **Budget is enforced per-role** — Application tracks `ResultMessage.total_cost_usd`; SDK also supports `max_budget_usd` for hard caps
+- **Reviewer is a separate query()** — Could also use `AgentDefinition` via the `agents` parameter, but currently uses independent `query()` calls
+- **Streaming** — `include_partial_messages=True` yields `StreamEvent` for real-time token output
+- **All conversations persisted** — SQLite stores every message for session resume; SDK also supports `resume` and `fork_session`
 
 ## Change History
 
+- **2026-03-20:** Updated insights to reflect verified v0.1.49 capabilities (max_budget_usd, AgentDefinition, StreamEvent, resume/fork_session)
 - **2026-03-19:** Initial journey diagram created

@@ -7,7 +7,7 @@ Implements the four-phase architecture:
 3. Planner - Creates detailed implementation plan
 4. Coder - Implements tasks iteratively
 
-Uses Claude Code SDK with defense-in-depth security.
+Uses Claude Agent SDK with defense-in-depth security.
 """
 
 import asyncio

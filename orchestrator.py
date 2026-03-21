@@ -283,7 +283,8 @@ class AgentOrchestrator:
                             ))
 
                 elif isinstance(msg, ResultMessage):
-                    # Budget is tracked MANUALLY — SDK has no max_budget_usd
+                    # Budget tracked at application level for per-role granularity
+                    # SDK also supports max_budget_usd for hard caps
                     cost = msg.total_cost_usd or 0.0
                     agent.add_cost(cost)
                     self.total_cost += cost

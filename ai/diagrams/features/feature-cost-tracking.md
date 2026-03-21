@@ -1,7 +1,7 @@
-# Cost Tracking — Manual Budget Management
+# Cost Tracking — Dual Budget Enforcement
 
 **Type:** Feature Diagram
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-20
 **Related Files:**
 - `orchestrator.py` — Budget accumulation in `run_agent()`
 - `agent_instance.py` — `AgentInstance.budget_exceeded` property
@@ -11,7 +11,7 @@
 
 ## Purpose
 
-Shows how cost tracking works WITHOUT the phantom `max_budget_usd` SDK field — budget is enforced manually by accumulating `ResultMessage.total_cost_usd` and comparing against configurable per-role limits.
+Shows how cost tracking works with dual enforcement: the SDK's `max_budget_usd` field provides hard caps, while the application layer accumulates `ResultMessage.total_cost_usd` for granular per-role limits.
 
 ## Diagram
 
@@ -57,7 +57,8 @@ flowchart TB
 
 ## Key Insights
 
-- **No SDK budget field**: `max_budget_usd` does NOT exist in claude-agent-sdk v0.1.49 — budget is application-level logic
+- **SDK budget field exists**: `max_budget_usd` IS a real field on `ClaudeAgentOptions` in v0.1.49 — can be used for SDK-enforced hard caps
+- **Dual enforcement**: Application tracks `ResultMessage.total_cost_usd` per-role for granular control; SDK `max_budget_usd` provides a safety net
 - **Per-role limits**: Code phase gets $2.00 (40% of total), research gets $0.50 (10%)
 - **Graceful stopping**: Exceeding budget breaks the `async for` loop — the agent's last response is still captured
 - **Persistent tracking**: Every cost event is recorded in SQLite for post-session analysis
@@ -65,4 +66,5 @@ flowchart TB
 
 ## Change History
 
+- **2026-03-20:** Corrected SDK budget field documentation — `max_budget_usd` exists in v0.1.49 (verified via introspection)
 - **2026-03-19:** Initial cost tracking diagram

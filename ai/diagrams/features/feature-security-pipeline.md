@@ -1,7 +1,7 @@
 # Security Pipeline — Defense in Depth
 
 **Type:** Feature Diagram
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-20
 **Related Files:**
 - `security.py` — `is_command_allowed()`, `ALLOWED_COMMANDS`, `DANGEROUS_PATTERNS`
 - `orchestrator.py` — `security_callback()` using `can_use_tool`
@@ -54,7 +54,9 @@ flowchart TB
 - **142 allowed commands**: Curated allowlist covers package managers, build tools, runtimes, linters, safe shell utilities
 - **20 dangerous patterns**: Catches `rm -rf /`, fork bombs, `curl | sh`, `sudo rm`, etc. regardless of allowlist
 - **Separation of concerns**: `can_use_tool` for security enforcement, `hooks` for observability only
+- **SDK also offers**: `permission_mode` ('default', 'acceptEdits', 'plan', 'bypassPermissions'), `disallowed_tools`, and `SandboxSettings` for additional isolation layers
 
 ## Change History
 
+- **2026-03-20:** Added SDK security capabilities note (permission_mode, disallowed_tools, SandboxSettings)
 - **2026-03-19:** Initial security pipeline diagram

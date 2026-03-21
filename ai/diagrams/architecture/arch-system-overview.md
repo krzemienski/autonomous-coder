@@ -1,7 +1,7 @@
 # TUI Agent Orchestration System — Architecture Overview
 
 **Type:** Architecture Diagram
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-20
 **Related Files:**
 - `app.py` — Textual App entry point
 - `orchestrator.py` — Phase pipeline engine
@@ -41,10 +41,11 @@ graph TB
         end
 
         subgraph "SDK Layer — claude-agent-sdk v0.1.49"
-            Q["query() calls<br/>⚡ One per agent, not nested"]
+            Q["query() / ClaudeSDKClient<br/>⚡ Stateless or stateful sessions"]
             CUT["can_use_tool callback<br/>🛡️ Blocks dangerous commands BEFORE execution"]
-            HOOKS["PreToolUse hooks<br/>📊 Observability without blocking"]
-            RM["ResultMessage<br/>💰 total_cost_usd for manual budget tracking"]
+            SE["StreamEvent<br/>📡 Real-time token streaming"]
+            RM["ResultMessage<br/>💰 total_cost_usd + max_budget_usd"]
+            AD["AgentDefinition<br/>🤖 Programmatic subagent definitions"]
         end
 
         subgraph "Persistence Layer"
@@ -56,8 +57,9 @@ graph TB
 
     APP -.->|"Textual Messages"| ORCH
     ORCH --> PR --> AF --> Q
-    Q --> CUT & HOOKS
+    Q --> CUT & SE
     Q --> RM --> COSTDB
+    AF -.-> AD
     ORCH --> SQL & SESS
 
     style U fill:#f9f,stroke:#333
@@ -70,9 +72,12 @@ graph TB
 
 - **User impact**: Every agent action is visible in real-time through Textual Message dispatch — no more watching blank terminal output
 - **Security**: `can_use_tool` callback blocks dangerous Bash commands BEFORE execution (not after, like the legacy client.py)
-- **Cost control**: Manual budget tracking via `ResultMessage.total_cost_usd` with configurable per-role limits — no phantom SDK field
-- **Resilience**: SQLite WAL mode + session resume means interrupted work can be continued
+- **Cost control**: SDK supports `max_budget_usd` for hard caps; application also tracks `ResultMessage.total_cost_usd` per-role for granular control
+- **Streaming**: `StreamEvent` (public in v0.1.49) enables real-time token-by-token output via `include_partial_messages=True`
+- **Subagents**: `AgentDefinition` enables programmatic subagent definitions via the `agents` parameter on `ClaudeAgentOptions`
+- **Resilience**: SQLite WAL mode + SDK `resume`/`fork_session` means interrupted work can be continued
 
 ## Change History
 
+- **2026-03-20:** Updated SDK layer to reflect verified v0.1.49 capabilities (max_budget_usd, AgentDefinition, ClaudeSDKClient, StreamEvent)
 - **2026-03-19:** Initial architecture diagram created during Phase A implementation

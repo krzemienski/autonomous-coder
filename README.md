@@ -67,20 +67,42 @@ python -m autonomous_coder
 │                    ORCHESTRATION LAYER                            │
 │  AgentOrchestrator │ PhaseRunners (R→E→P→C) │ AgentFactory       │
 ├──────────────────────────────────────────────────────────────────┤
-│                    SDK LAYER (claude-agent-sdk v0.1.49)             │
-│  query() │ ClaudeAgentOptions │ can_use_tool │ ResultMessage        │
+│                SDK LAYER (claude-agent-sdk v0.1.49)               │
+│  query() │ ClaudeSDKClient │ ClaudeAgentOptions │ AgentDefinition │
+│  can_use_tool │ max_budget_usd │ StreamEvent │ ResultMessage      │
 ├──────────────────────────────────────────────────────────────────┤
 │                    PERSISTENCE LAYER                             │
 │  SQLite + FTS5 + WAL │ Session Management │ Cost Aggregation     │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+### SDK Capabilities (v0.1.49 — verified via introspection)
+
+| Feature | Field / Class | Status |
+|---------|---------------|--------|
+| One-shot agent queries | `query()` → `AsyncIterator[Message]` | Used |
+| Stateful multi-turn sessions | `ClaudeSDKClient` | Available |
+| Per-role options | `ClaudeAgentOptions` (35 fields) | Used |
+| SDK-enforced budget caps | `max_budget_usd: float` | Available |
+| Programmatic subagents | `agents: dict[str, AgentDefinition]` | Available |
+| Pre-execution security | `can_use_tool` callback | Used |
+| Real-time streaming | `include_partial_messages` → `StreamEvent` | Used |
+| Extended thinking | `thinking: ThinkingConfig` | Available |
+| Effort control | `effort: 'low'\|'medium'\|'high'\|'max'` | Available |
+| Structured output | `output_format: dict` | Available |
+| Model fallback | `fallback_model: str` | Available |
+| File checkpointing | `enable_file_checkpointing: bool` | Available |
+| Session forking | `fork_session: bool` | Available |
+| In-process MCP tools | `create_sdk_mcp_server()`, `@tool` | Available |
+| Sandbox isolation | `sandbox: SandboxSettings` | Available |
+| Session management | `list_sessions()`, `tag_session()` | Available |
+
 ### Key Design Decisions
 
-- **`ClaudeAgentOptions` only** — Uses only verified fields from `claude-agent-sdk v0.1.49`. No fabricated API.
+- **`ClaudeAgentOptions`** — Uses verified fields from `claude-agent-sdk v0.1.49`. All field names and types confirmed via `inspect.signature()`.
 - **`can_use_tool` for security** — Pre-execution Bash command validation via `PermissionResultAllow`/`PermissionResultDeny`. Blocks dangerous commands *before* they run.
-- **Manual budget tracking** — `ResultMessage.total_cost_usd` accumulated per-agent with configurable limits. No phantom `max_budget_usd` field.
-- **Textual Messages for UI** — Built-in `post_message()` system, no custom EventBus. 8 message types: `AgentStarted`, `AgentOutput`, `AgentCompleted`, `AgentError`, `CostUpdate`, `SecurityBlock`, `PhaseStarted`, `PhaseCompleted`.
+- **Application-level budget tracking** — `ResultMessage.total_cost_usd` accumulated per-agent with configurable limits. The SDK also offers `max_budget_usd` for SDK-enforced caps.
+- **Textual Messages for UI** — Built-in `post_message()` system. 8 message types: `AgentStarted`, `AgentOutput`, `AgentCompleted`, `AgentError`, `CostUpdate`, `SecurityBlock`, `PhaseStarted`, `PhaseCompleted`.
 - **PhaseRunner protocol** — Each phase implements `async def run(context: PhaseContext) -> PhaseResult`. Composable and extensible.
 - **Sequential pipeline v1** — Phases run sequentially to avoid file conflicts. Parallel execution deferred to v2.
 
@@ -112,7 +134,7 @@ Default budget allocation ($5.00 total):
 | Code | $2.00 | claude-sonnet-4-5 | 30 |
 | Reviewer | $0.25 | claude-sonnet-4-5 | 10 |
 
-Budget is enforced per-role via `ResultMessage.total_cost_usd` accumulation. Exceeding a role's budget stops that agent gracefully.
+Budget is enforced per-role via `ResultMessage.total_cost_usd` accumulation. Exceeding a role's budget stops that agent gracefully. The SDK also supports `max_budget_usd` on `ClaudeAgentOptions` for SDK-level enforcement.
 
 ## Security Model
 

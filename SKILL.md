@@ -1,11 +1,11 @@
 ---
 name: autonomous-coder
-description: Autonomous coding agent with web research for MCP discovery, codebase exploration, comprehensive planning, and iterative implementation using Claude Code SDK with multiple MCP integrations
+description: Autonomous coding agent with web research for MCP discovery, codebase exploration, comprehensive planning, and iterative implementation using Claude Agent SDK (v0.1.49) with multiple MCP integrations
 ---
 
 # Autonomous Coder
 
-This skill provides an autonomous coding agent capable of working on **existing codebases** (not just greenfield projects). It uses a four-phase architecture (Research → Explorer → Planner → Coder) with web research for MCP discovery, Serena MCP for deep contextual understanding, and Claude Code SDK for implementation.
+This skill provides an autonomous coding agent capable of working on **existing codebases** (not just greenfield projects). It uses a four-phase architecture (Research → Explorer → Planner → Coder) with web research for MCP discovery, Serena MCP for deep contextual understanding, and Claude Agent SDK for implementation.
 
 ## Capabilities
 
@@ -302,7 +302,7 @@ result = await run_autonomous_coder(
 ## Scripts
 
 - **`agent.py`**: Main orchestrator managing the four-phase flow
-- **`client.py`**: Claude SDK client with security configuration and MCP setup
+- **`client.py`**: Claude Agent SDK client with security configuration and MCP setup
 - **`security.py`**: Bash command allowlist and PreToolUse hook validation
 - **`prompts.py`**: Prompt template loading and formatting utilities
 - **`researcher.py`**: Phase 1 - Web research and MCP discovery using Firecrawl and Context7
@@ -538,7 +538,7 @@ config = {
 ## Dependencies
 
 - Python 3.11+
-- `claude-agent-sdk` >= 0.1.0
+- `claude-agent-sdk` >= 0.1.49
 - `serena` (via uvx or pip)
 - Node.js 18+ (for npx commands)
 - Git (for version control)
